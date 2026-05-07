@@ -392,6 +392,34 @@
     opacity: 1;
   }
 
+  /* click-to-reveal contact (anti-scrape) */
+  .reveal {
+    cursor: pointer;
+    font-family: "JetBrains Mono", monospace;
+    background: var(--pastel-butter);
+    padding: 2px 6px;
+    border: var(--hairline) solid var(--ink);
+    color: var(--ink);
+    user-select: none;
+    transition: background 0.15s ease;
+  }
+  .reveal:hover { background: var(--pastel-mint); }
+  .reveal[data-revealed="true"] {
+    cursor: text;
+    user-select: text;
+    background: transparent;
+    border-color: transparent;
+    padding: 0;
+  }
+  .reveal .hint {
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-left: 6px;
+  }
+  .reveal[data-revealed="true"] .hint { display: none; }
+
   /* === Footer === */
   footer {
     border-top: var(--hairline) solid var(--ink);
@@ -496,7 +524,7 @@
 
   <!-- nav links row -->
   <nav class="navrow">
-    <a href="#"><span class="num">01</span>RESUME<span class="arrow">↗</span></a>
+    <a href="/resume"><span class="num">01</span>RESUME<span class="arrow">↗</span></a>
     <a href="#"><span class="num">02</span>LINKEDIN<span class="arrow">↗</span></a>
     <a href="#"><span class="num">03</span>ALL PROJECTS<span class="arrow">↗</span></a>
     <a href="#"><span class="num">04</span>CONTACT<span class="arrow">↗</span></a>
@@ -691,7 +719,7 @@
     <div class="foot-inner">
       <div class="foot-mark">— see <span style="font-style: normal;">you</span> around.</div>
       <div class="foot-meta">
-        ✕ EMAIL · <a href="mailto:jus@hey.com">jus@hey.com</a><br/>
+        ✕ EMAIL · <span class="reveal" data-type="email" data-user="jus" data-domain="hey.com">[click to reveal]<span class="hint">↵</span></span><br/>
         ✕ LINKEDIN · <a href="https://www.linkedin.com/in/justinsnider" target="_blank" rel="noopener noreferrer">/in/justinsnider</a><br/>
         ✕ GITHUB · <a href="https://github.com/justinSim10ai" target="_blank" rel="noopener noreferrer">@justinSim10ai</a><br/>
         ✕ THREADS · <a href="https://www.threads.net/@jstnjsph" target="_blank" rel="noopener noreferrer">@jstnjsph</a>
@@ -702,6 +730,35 @@
       <span>Built by Claude Code in 3 minutes.</span>
     </div>
   </footer>
+
+<script>
+(function () {
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('.reveal');
+    if (!el || el.dataset.revealed === 'true') return;
+    e.preventDefault();
+    var type = el.dataset.type;
+    if (type === 'email') {
+      var addr = el.dataset.user + '@' + el.dataset.domain;
+      var a = document.createElement('a');
+      a.href = 'mailto:' + addr;
+      a.textContent = addr;
+      el.innerHTML = '';
+      el.appendChild(a);
+      el.dataset.revealed = 'true';
+    } else if (type === 'phone') {
+      var num = el.dataset.p1 + '.' + el.dataset.p2 + '.' + el.dataset.p3;
+      var tel = el.dataset.p1 + el.dataset.p2 + el.dataset.p3;
+      var a2 = document.createElement('a');
+      a2.href = 'tel:+1' + tel;
+      a2.textContent = num;
+      el.innerHTML = '';
+      el.appendChild(a2);
+      el.dataset.revealed = 'true';
+    }
+  });
+})();
+</script>
 
 <script>
 (function () {
