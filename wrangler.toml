@@ -1,0 +1,11 @@
+name = "weregoingplaces"
+compatibility_date = "2026-05-06"
+workers_dev = true
+
+routes = [
+  { pattern = "weregoingplaces.xyz", custom_domain = true },
+  { pattern = "www.weregoingplaces.xyz", custom_domain = true },
+]
+
+[assets]
+directory = "./site"
