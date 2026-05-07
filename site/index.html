@@ -245,11 +245,12 @@
   }
   .row.one { grid-template-columns: 1fr; }
   .row.two { grid-template-columns: 1fr 1fr; }
-  .row.two > .card + .card {
+  .row.two > * + * {
     border-left: var(--hairline) solid var(--ink);
   }
 
   .card {
+    display: block;
     position: relative;
     overflow: hidden;
     background: var(--paper);
@@ -421,6 +422,8 @@
     line-height: 2;
     color: var(--ink-soft);
   }
+  .foot-meta a { transition: color 0.15s ease; }
+  .foot-meta a:hover { color: var(--ink); }
   .foot-bottom {
     max-width: var(--content-max);
     margin: 48px auto 0;
@@ -439,7 +442,7 @@
   @media (max-width: 720px) {
     :root { --gutter: 16px; }
     .row.two { grid-template-columns: 1fr; }
-    .row.two > .card + .card {
+    .row.two > * + * {
       border-left: 0;
       border-top: var(--hairline) solid var(--ink);
     }
@@ -517,7 +520,7 @@
 
         <!-- Row 1 — one (full) -->
         <div class="row one">
-          <article class="card full" style="--card-color: var(--pastel-sky)">
+          <a class="card full" href="https://sim10.ai" target="_blank" rel="noopener noreferrer" style="--card-color: var(--pastel-sky)">
             <div class="card-bg"></div>
             <div class="card-tag">FOUNDER · 2024 →</div>
             <div class="card-num">⁄01</div>
@@ -527,7 +530,7 @@
               <p>An LLM-powered sports simulation engine. Plays out entire seasons, narrates the highlights, surfaces the human stories underneath the box scores. Currently in private beta with a handful of fantasy leagues.</p>
               <span class="cta">ENTER THE SIM →</span>
             </div>
-          </article>
+          </a>
         </div>
 
         <!-- Row 2 — two -->
@@ -543,7 +546,7 @@
               <span class="cta">READ THE WRITE-UP →</span>
             </div>
           </article>
-          <article class="card square" style="--card-color: var(--pastel-mint)">
+          <a class="card square" href="https://mcp.crypto.com" target="_blank" rel="noopener noreferrer" style="--card-color: var(--pastel-mint)">
             <div class="card-bg"></div>
             <div class="card-tag">PRODUCT · LAUNCH</div>
             <div class="card-num">⁄03</div>
@@ -553,7 +556,7 @@
               <p>Helped launch the Model Context Protocol integration — letting AI assistants safely query wallets, prices, and on-chain data through a single typed interface. Shipped to millions.</p>
               <span class="cta">VIEW PROTOCOL →</span>
             </div>
-          </article>
+          </a>
         </div>
 
         <!-- Row 3 — one (tall) -->
@@ -688,15 +691,15 @@
     <div class="foot-inner">
       <div class="foot-mark">— see <span style="font-style: normal;">you</span> around.</div>
       <div class="foot-meta">
-        ✕ EMAIL · JUSTIN@DOMAIN.COM<br/>
-        ✕ LINKEDIN · /IN/JUSTIN<br/>
-        ✕ GITHUB · @JUSTIN<br/>
-        ✕ X · @JUSTIN
+        ✕ EMAIL · <a href="mailto:jus@hey.com">jus@hey.com</a><br/>
+        ✕ LINKEDIN · <a href="https://www.linkedin.com/in/justinsnider" target="_blank" rel="noopener noreferrer">/in/justinsnider</a><br/>
+        ✕ GITHUB · <a href="https://github.com/justinSim10ai" target="_blank" rel="noopener noreferrer">@justinSim10ai</a><br/>
+        ✕ THREADS · <a href="https://www.threads.net/@jstnjsph" target="_blank" rel="noopener noreferrer">@jstnjsph</a>
       </div>
     </div>
     <div class="foot-bottom">
       <span>© 2026 JUSTIN. ALL RIGHTS LIGHTLY RESERVED.</span>
-      <span>BUILT BY HAND ⁄ NO TEMPLATE</span>
+      <span>Built by Claude Design in 3 minutes.</span>
     </div>
   </footer>
 
