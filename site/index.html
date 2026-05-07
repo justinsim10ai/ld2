@@ -525,9 +525,9 @@
   <!-- nav links row -->
   <nav class="navrow">
     <a href="/resume"><span class="num">01</span>RESUME<span class="arrow">↗</span></a>
-    <a href="#"><span class="num">02</span>LINKEDIN<span class="arrow">↗</span></a>
+    <a href="https://linkedin.com/in/justinsnider" target="_blank" rel="noopener noreferrer"><span class="num">02</span>LINKEDIN<span class="arrow">↗</span></a>
     <a href="#"><span class="num">03</span>ALL PROJECTS<span class="arrow">↗</span></a>
-    <a href="#"><span class="num">04</span>CONTACT<span class="arrow">↗</span></a>
+    <a href="#" class="nav-mailto" data-user="jus" data-domain="hey.com"><span class="num">04</span>CONTACT<span class="arrow">↗</span></a>
   </nav>
 
   <!-- grid section -->
@@ -734,6 +734,12 @@
 <script>
 (function () {
   document.addEventListener('click', function (e) {
+    var navMail = e.target.closest('.nav-mailto');
+    if (navMail) {
+      e.preventDefault();
+      window.location.href = 'mailto:' + navMail.dataset.user + '@' + navMail.dataset.domain;
+      return;
+    }
     var el = e.target.closest('.reveal');
     if (!el || el.dataset.revealed === 'true') return;
     e.preventDefault();
