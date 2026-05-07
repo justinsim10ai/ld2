@@ -264,8 +264,7 @@
     cursor: pointer;
     isolation: isolate;
   }
-  .card.tall    { aspect-ratio: 16 / 9; }
-  .card.full    { aspect-ratio: 21 / 8; }
+  .card.full    { aspect-ratio: 21 / 5; }
   .card.square  { aspect-ratio: 4 / 3; }
 
   .card-bg {
@@ -331,6 +330,22 @@
     color: var(--ink);
     opacity: 0.85;
     pointer-events: none;
+  }
+
+  /* "coming soon" / placeholder stamp */
+  .card-stamp {
+    position: absolute;
+    top: 38px; right: 16px;
+    z-index: 4;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    background: #2ec27e;
+    color: var(--ink);
+    padding: 4px 7px;
+    border: var(--hairline) solid var(--ink);
+    line-height: 1;
   }
 
   /* hover overlay */
@@ -547,8 +562,8 @@
         <h2>The <span class="ital">things</span> I've made.</h2>
       </div>
       <div class="count">
-        SHOWING 12<br/>
-        ⁄ 12
+        SHOWING 7<br/>
+        ⁄ 7
       </div>
     </div>
 
@@ -596,15 +611,16 @@
           </a>
         </div>
 
-        <!-- Row 3 — one (tall) -->
+        <!-- Row 3 — one (full) -->
         <div class="row one">
-          <article class="card tall" style="--card-color: var(--pastel-peach)">
+          <article class="card full" style="--card-color: var(--pastel-peach)">
             <div class="card-bg"></div>
             <div class="card-tag">TOOL · OPEN SOURCE</div>
             <div class="card-num">⁄04</div>
+            <div class="card-stamp">COMING SOON</div>
             <div class="card-foot"><span>TOOL</span><span>2025</span></div>
             <div class="card-overlay">
-              <h3>Review Scraper<br/><span class="ital">the agent that listens.</span></h3>
+              <h3>Vibe Scraper<br/><span class="ital">the agent that listens.</span></h3>
               <p>An agentic workflow that scrapes app store reviews across iOS + Android, clusters complaints, and writes the bug ticket for you. The PMs at three startups now use it weekly.</p>
               <span class="cta">SEE THE PIPELINE →</span>
             </div>
@@ -613,21 +629,11 @@
 
         <!-- Row 4 — three -->
         <div class="row three">
-          <article class="card square" style="--card-color: var(--pastel-butter)">
-            <div class="card-bg"></div>
-            <div class="card-tag">ESSAY</div>
-            <div class="card-num">⁄05</div>
-            <div class="card-foot"><span>WRITING</span><span>ONGOING</span></div>
-            <div class="card-overlay">
-              <h3>Notes on Building<br/><span class="ital">agents that don't lie.</span></h3>
-              <p>A long-running set of notes on the actual practice of shipping agentic systems — what works, what gets you fired, the unglamorous middle. Updated whenever I learn something new.</p>
-              <span class="cta">READ ESSAY →</span>
-            </div>
-          </article>
           <article class="card square" style="--card-color: var(--pastel-rose)">
             <div class="card-bg"></div>
             <div class="card-tag">EXPERIMENT</div>
-            <div class="card-num">⁄06</div>
+            <div class="card-num">⁄05</div>
+            <div class="card-stamp">COMING SOON</div>
             <div class="card-foot"><span>SIDE PROJECT</span><span>2025</span></div>
             <div class="card-overlay">
               <h3>Tiny Forecasts<br/><span class="ital">predictions, smaller.</span></h3>
@@ -635,25 +641,10 @@
               <span class="cta">TRY IT →</span>
             </div>
           </article>
-          <article class="card square" style="--card-color: var(--pastel-sky)">
-            <div class="card-bg"></div>
-            <div class="card-tag">TALK</div>
-            <div class="card-num">⁄07</div>
-            <div class="card-foot"><span>TALK</span><span>2025</span></div>
-            <div class="card-overlay">
-              <h3>On Simulation<br/><span class="ital">why fake worlds matter.</span></h3>
-              <p>A talk I gave on why simulation — sports, economies, weather — is the underrated frontier for LLMs. Covers Sim10's architecture and what we got wrong twice before getting it right.</p>
-              <span class="cta">WATCH →</span>
-            </div>
-          </article>
-        </div>
-
-        <!-- Row 5 — three -->
-        <div class="row three">
-          <article class="card square" style="--card-color: var(--pastel-peach)">
+          <article class="card square" style="--card-color: var(--pastel-butter)">
             <div class="card-bg"></div>
             <div class="card-tag">PROTOTYPE</div>
-            <div class="card-num">⁄08</div>
+            <div class="card-num">⁄06</div>
             <div class="card-foot"><span>PROTOTYPE</span><span>2024</span></div>
             <div class="card-overlay">
               <h3>Box Score Bot<br/><span class="ital">stats, but human.</span></h3>
@@ -663,50 +654,13 @@
           </article>
           <article class="card square" style="--card-color: var(--pastel-lavender)">
             <div class="card-bg"></div>
-            <div class="card-tag">ARCHIVE</div>
-            <div class="card-num">⁄09</div>
-            <div class="card-foot"><span>ARCHIVE</span><span>2019 — 2024</span></div>
+            <div class="card-tag">TBD</div>
+            <div class="card-num">⁄07</div>
+            <div class="card-foot"><span>OPEN SLOT</span><span>SOON</span></div>
             <div class="card-overlay">
-              <h3>Old Things<br/><span class="ital">a graveyard of side projects.</span></h3>
-              <p>Every weekend project I've shipped, abandoned, or accidentally turned into a real company since 2019. Browse the wreckage; some of it still works.</p>
-              <span class="cta">ENTER THE ARCHIVE →</span>
-            </div>
-          </article>
-          <article class="card square" style="--card-color: var(--pastel-mint)">
-            <div class="card-bg"></div>
-            <div class="card-tag">PHOTO</div>
-            <div class="card-num">⁄10</div>
-            <div class="card-foot"><span>PHOTO</span><span>ONGOING</span></div>
-            <div class="card-overlay">
-              <h3>Quiet Cities<br/><span class="ital">a photo series.</span></h3>
-              <p>Photographs of cities at the hour when they almost belong to no one — taken between 4 and 6 a.m. across NYC, Tokyo, and Lisbon. Shot on a Ricoh GR III. Updated when I travel.</p>
-              <span class="cta">VIEW SERIES →</span>
-            </div>
-          </article>
-        </div>
-
-        <!-- Row 6 — two -->
-        <div class="row two">
-          <article class="card square" style="--card-color: var(--pastel-butter)">
-            <div class="card-bg"></div>
-            <div class="card-tag">NEWSLETTER</div>
-            <div class="card-num">⁄11</div>
-            <div class="card-foot"><span>WRITING</span><span>ONGOING</span></div>
-            <div class="card-overlay">
-              <h3>The Sunday Note<br/><span class="ital">weekly, brief, occasionally good.</span></h3>
-              <p>A short Sunday email about whatever I've been thinking about — usually agents, usually sports, occasionally the economics of sandwiches. ~2,400 readers, no growth strategy.</p>
-              <span class="cta">SUBSCRIBE →</span>
-            </div>
-          </article>
-          <article class="card square" style="--card-color: var(--pastel-rose)">
-            <div class="card-bg"></div>
-            <div class="card-tag">ABOUT</div>
-            <div class="card-num">⁄12</div>
-            <div class="card-foot"><span>META</span><span>2026</span></div>
-            <div class="card-overlay">
-              <h3>Colophon<br/><span class="ital">how this site was made.</span></h3>
-              <p>Notes on the type, the spacing, the small decisions. Set in Instrument Serif and JetBrains Mono. Hand-written HTML, no framework, no analytics, no cookie banner. Made on a Tuesday.</p>
-              <span class="cta">READ COLOPHON →</span>
+              <h3>Something I<br/><span class="ital">haven't thought of yet.</span></h3>
+              <p>An open slot — drop a note if you have an idea for what should live here. Otherwise, watch this space.</p>
+              <span class="cta">SUGGEST →</span>
             </div>
           </article>
         </div>
