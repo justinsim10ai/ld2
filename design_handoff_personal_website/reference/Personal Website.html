@@ -73,16 +73,22 @@
     align-items: center;
     gap: 16px;
   }
+  .topbar .blink {
+    display: inline-flex; align-items: center; gap: 8px;
+  }
   .topbar .blink::after {
     content: "";
     display: inline-block;
-    width: 8px; height: 8px;
-    background: var(--ink);
-    margin-left: 8px;
+    width: 9px; height: 9px;
+    background: #2ec27e;
+    box-shadow: 0 0 0 2px rgba(46,194,126,0.18);
     transform: translateY(-1px);
-    animation: blink 1.1s steps(2, end) infinite;
+    animation: pulse 1.6s ease-in-out infinite;
   }
-  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes pulse {
+    0%, 100% { background: #2ec27e; box-shadow: 0 0 0 2px rgba(46,194,126,0.18); }
+    50%      { background: #3aa0ff; box-shadow: 0 0 0 4px rgba(58,160,255,0.22); }
+  }
 
   /* === Hero === */
   .hero {
@@ -518,7 +524,7 @@
   <header class="topbar">
     <div class="left">JUSTIN ⁄ PERSONAL INDEX ⁄ EST. 2026</div>
     <div class="right">
-      <span>NYC · 38°F</span>
+      <span>BOSTON · 52°F</span>
       <span class="blink">AVAILABLE FOR WORK</span>
     </div>
   </header>

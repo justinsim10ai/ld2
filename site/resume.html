@@ -1,0 +1,1060 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Justin Snider — Resume</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --paper: #f1f1ec;
+    --ink: #0e0e10;
+    --ink-soft: #2a2a2e;
+    --muted: #6b6b70;
+
+    --pastel-mint:    #c9e4d4;
+    --pastel-lavender:#d9d2ee;
+    --pastel-peach:   #f5d6c6;
+    --pastel-sky:     #cfe0ee;
+    --pastel-butter:  #efe7c7;
+    --pastel-rose:    #ecd2d8;
+    --accent-green:   #2ec27e;
+    --accent-blue:    #3aa0ff;
+
+    --hairline: 1.5px;
+    --content-max: 1280px;
+    --gutter: 32px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: inherit; text-decoration: none; }
+
+  /* Top bar */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--paper);
+    border-bottom: var(--hairline) solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .topbar > div { padding: 12px 20px; }
+  .topbar .left { border-right: var(--hairline) solid var(--ink); }
+  .topbar .right {
+    border-left: var(--hairline) solid var(--ink);
+    display: flex; align-items: center; gap: 16px;
+  }
+  .topbar a:hover { background: var(--ink); color: var(--paper); }
+  .topbar .back { display: inline-flex; align-items: center; gap: 8px; }
+  .topbar .back .arrow { transition: transform 0.2s ease; display: inline-block; }
+  .topbar .back:hover .arrow { transform: translateX(-3px); }
+  .topbar .blink {
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .topbar .blink::after {
+    content: ""; display: inline-block;
+    width: 9px; height: 9px;
+    background: #2ec27e;
+    box-shadow: 0 0 0 2px rgba(46,194,126,0.18);
+    transform: translateY(-1px);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { background: #2ec27e; box-shadow: 0 0 0 2px rgba(46,194,126,0.18); }
+    50%      { background: #3aa0ff; box-shadow: 0 0 0 4px rgba(58,160,255,0.22); }
+  }
+
+  /* Hero */
+  .hero {
+    border-bottom: var(--hairline) solid var(--ink);
+    padding: 80px var(--gutter) 48px;
+    background:
+      radial-gradient(ellipse at 90% 10%, var(--pastel-sky) 0%, transparent 55%),
+      radial-gradient(ellipse at 10% 90%, var(--pastel-peach) 0%, transparent 50%),
+      var(--paper);
+  }
+  .hero-inner { max-width: var(--content-max); margin: 0 auto; }
+  .hero-eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px; letter-spacing: 0.12em;
+    text-transform: uppercase;
+    display: flex; gap: 12px; align-items: center;
+    margin-bottom: 28px;
+  }
+  .hero-eyebrow::before {
+    content: ""; width: 36px; height: var(--hairline); background: var(--ink);
+  }
+  .hero h1 {
+    font-family: "Instrument Serif", "Times New Roman", serif;
+    font-weight: 400;
+    font-size: clamp(64px, 11vw, 180px);
+    line-height: 0.88;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .hero h1 .ital { font-style: italic; }
+  .hero h1 .punch {
+    display: inline;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.04em 0.18em 0.08em;
+    line-height: 1;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    box-shadow: 6px 6px 0 0 var(--accent-green);
+  }
+
+  /* Hero meta band */
+  .hero-band {
+    margin-top: 40px;
+    border-top: var(--hairline) solid var(--ink);
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+  .hero-band > div {
+    padding: 20px 24px 20px 0;
+    border-right: var(--hairline) solid var(--ink);
+  }
+  .hero-band > div:last-child { border-right: 0; padding-right: 0; }
+  .hero-band > div:nth-child(n+2) { padding-left: 24px; }
+  .hero-band .key {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .hero-band .val {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+
+  /* Action bar */
+  .actions {
+    display: flex;
+    border-bottom: var(--hairline) solid var(--ink);
+    background: var(--paper);
+  }
+  .actions a {
+    flex: 1;
+    text-align: center;
+    padding: 18px 16px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border-right: var(--hairline) solid var(--ink);
+    position: relative;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .actions a:last-child { border-right: 0; }
+  .actions a .num {
+    position: absolute; top: 6px; left: 10px;
+    font-size: 9px; opacity: 0.55;
+  }
+  .actions a .arrow {
+    display: inline-block; margin-left: 8px;
+    transition: transform 0.2s ease;
+  }
+  .actions a:hover { background: var(--ink); color: var(--paper); }
+  .actions a:hover .arrow { transform: translate(2px, -2px); }
+
+  /* Section */
+  section.block {
+    border-bottom: var(--hairline) solid var(--ink);
+  }
+  .block-inner {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: 48px var(--gutter);
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 48px;
+  }
+  .block-head .label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .block-head h2 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-size: clamp(36px, 4vw, 56px);
+    line-height: 0.95;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .block-head h2 .ital { font-style: italic; }
+  .block-head .meta {
+    margin-top: 16px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+
+  /* Summary */
+  .summary p {
+    font-family: "Instrument Serif", serif;
+    font-size: clamp(22px, 2.4vw, 32px);
+    line-height: 1.3;
+    margin: 0;
+    color: var(--ink);
+    text-wrap: pretty;
+    letter-spacing: -0.005em;
+  }
+  .summary p .ital { font-style: italic; }
+  .summary p .mark-g { background: var(--pastel-mint); padding: 0 4px; }
+  .summary p .mark-b { background: var(--pastel-sky); padding: 0 4px; }
+  .summary p + p { margin-top: 18px; }
+  .summary .stats {
+    margin-top: 32px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: var(--hairline) solid var(--ink);
+  }
+  .summary .stats > div {
+    padding: 20px 20px 0 0;
+    border-right: var(--hairline) solid var(--ink);
+  }
+  .summary .stats > div:last-child { border-right: 0; }
+  .summary .stats > div:nth-child(n+2) { padding-left: 20px; }
+  .summary .stats > div:nth-child(1) { background: var(--pastel-mint); padding-left: 16px !important; padding-top: 16px; }
+  .summary .stats > div:nth-child(2) { background: var(--pastel-sky); padding-left: 16px !important; padding-top: 16px; }
+  .summary .stats > div:nth-child(3) { background: var(--pastel-peach); padding-left: 16px !important; padding-top: 16px; }
+  .summary .stats .num {
+    font-family: "Instrument Serif", serif;
+    font-size: clamp(48px, 6vw, 88px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .summary .stats .num .ital { font-style: italic; }
+  .summary .stats .lbl {
+    margin-top: 8px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Experience block uses a wider layout so the role copy isn't trapped in a thin column */
+  #experience .block-inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  #experience .block-head {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 24px;
+    align-items: end;
+    padding-bottom: 24px;
+    border-bottom: var(--hairline) solid var(--ink);
+  }
+  #experience .block-head .meta {
+    margin-top: 0;
+    text-align: right;
+  }
+  #experience .highlights { margin-top: 8px; }
+  #experience .jobs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    border-top: var(--hairline) solid var(--ink);
+  }
+  #experience .job {
+    grid-template-columns: 120px 1fr;
+    gap: 24px;
+    padding: 28px 24px;
+    border-bottom: var(--hairline) solid var(--ink);
+    border-right: var(--hairline) solid var(--ink);
+  }
+  #experience .job:nth-child(2n) { border-right: 0; }
+  #experience .job:nth-last-child(-n+2) { border-bottom: 0; }
+  @media (max-width: 860px) {
+    #experience .block-head {
+      grid-template-columns: 1fr;
+      text-align: left;
+    }
+    #experience .block-head .meta { text-align: left; }
+    #experience .jobs { grid-template-columns: 1fr; }
+    #experience .job {
+      border-right: 0;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    #experience .job:nth-last-child(-n+2) { border-bottom: var(--hairline) solid var(--ink); }
+    #experience .job:last-child { border-bottom: 0; }
+  }
+
+  /* Click-to-reveal contact (anti-scrape) */
+  .reveal {
+    cursor: pointer;
+    font-family: "JetBrains Mono", monospace;
+    background: var(--pastel-butter);
+    padding: 2px 6px;
+    border: var(--hairline) solid var(--ink);
+    color: var(--ink);
+    user-select: none;
+    transition: background 0.15s ease;
+  }
+  .reveal:hover { background: var(--pastel-mint); }
+  .reveal[data-revealed="true"] {
+    cursor: text;
+    user-select: text;
+    background: transparent;
+    border-color: transparent;
+    padding: 0;
+  }
+  .reveal .hint {
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-left: 6px;
+  }
+  .reveal[data-revealed="true"] .hint { display: none; }
+
+  /* Bullet list under summary */
+  .summary .bullets {
+    margin: 28px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 24px;
+  }
+  .summary .bullets li {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink);
+    padding-left: 22px;
+    position: relative;
+    line-height: 1.4;
+  }
+  .summary .bullets li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 50%;
+    width: 14px; height: var(--hairline);
+    background: var(--ink);
+    transform: translateY(-50%);
+  }
+  .summary .bullets li .dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--bullet-color, var(--pastel-mint));
+    border: var(--hairline) solid var(--ink);
+    margin-right: 8px;
+    transform: translateY(1px);
+  }
+  @media (max-width: 720px) {
+    .summary .bullets { grid-template-columns: 1fr; }
+  }
+
+  /* Highlights */
+  .highlights {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border: var(--hairline) solid var(--ink);
+    margin-bottom: 40px;
+  }
+  .hl-card {
+    padding: 18px 20px;
+    background: var(--hl-bg, var(--paper));
+    border-right: var(--hairline) solid var(--ink);
+    border-bottom: var(--hairline) solid var(--ink);
+  }
+  .hl-card:nth-child(2n) { border-right: 0; }
+  .hl-card:nth-last-child(-n+2) { border-bottom: 0; }
+  .hl-key {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 8px;
+    opacity: 0.75;
+  }
+  .hl-val {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .hl-val strong { font-weight: 700; }
+  @media (max-width: 860px) {
+    .highlights { grid-template-columns: 1fr; }
+    .hl-card { border-right: 0; }
+    .hl-card:nth-last-child(-n+2) { border-bottom: var(--hairline) solid var(--ink); }
+    .hl-card:last-child { border-bottom: 0; }
+  }
+
+  /* Experience */
+  .job {
+    padding: 28px 0;
+    border-bottom: var(--hairline) solid var(--ink);
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 32px;
+    position: relative;
+  }
+  .job:last-child { border-bottom: 0; padding-bottom: 0; }
+  .job:first-child { padding-top: 0; }
+  .job .when {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  .job .when .now {
+    display: inline-block;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 2px 6px;
+    margin-left: 4px;
+  }
+  .job .when .loc {
+    display: block;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .job .body h3 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-size: clamp(24px, 2.4vw, 36px);
+    line-height: 1.05;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .job .body h3 .ital { font-style: italic; }
+  .job .body .company {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .job .body ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .job .body li {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--ink-soft);
+    padding-left: 22px;
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .job .body li::before {
+    content: "→";
+    position: absolute;
+    left: 0; top: 0;
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .job .body li strong {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .job .body li .hl {
+    background: var(--hl-color, var(--pastel-butter));
+    padding: 0 4px;
+    color: var(--ink);
+  }
+
+  /* Skills grid */
+  .skills-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    border: var(--hairline) solid var(--ink);
+  }
+  .skills-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    border-bottom: var(--hairline) solid var(--ink);
+  }
+  .skills-row:last-child { border-bottom: 0; }
+  .skills-row .cat {
+    padding: 18px 18px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    background: var(--cat-color, var(--pastel-mint));
+    border-right: var(--hairline) solid var(--ink);
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+  }
+  .skills-row .chips {
+    padding: 16px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+  .skills-row .chip {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    padding: 4px 8px;
+    border: var(--hairline) solid var(--ink);
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.3;
+  }
+
+  /* Outside */
+  .outside {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+  .outside .tag {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    padding: 6px 12px;
+    border: var(--hairline) solid var(--ink);
+    background: var(--tag-color);
+    color: var(--ink);
+  }
+  .outside .tag.special {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* Footer */
+  footer {
+    padding: 56px var(--gutter) 32px;
+  }
+  .foot-inner {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+  }
+  .foot-mark {
+    font-family: "Instrument Serif", serif;
+    font-style: italic;
+    font-size: clamp(40px, 6vw, 96px);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+  }
+  .foot-mark .roman { font-style: normal; }
+  .foot-meta {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    text-align: right;
+    line-height: 2;
+    color: var(--ink-soft);
+  }
+  .foot-bottom {
+    max-width: var(--content-max);
+    margin: 40px auto 0;
+    padding-top: 16px;
+    border-top: var(--hairline) solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  @media (max-width: 860px) {
+    .block-inner { grid-template-columns: 1fr; gap: 24px; }
+    .job { grid-template-columns: 1fr; gap: 12px; }
+    .skills-row { grid-template-columns: 1fr; }
+    .skills-row .cat { border-right: 0; border-bottom: var(--hairline) solid var(--ink); }
+    .hero-band { grid-template-columns: 1fr; }
+    .hero-band > div {
+      border-right: 0;
+      border-bottom: var(--hairline) solid var(--ink);
+      padding: 16px 0 !important;
+    }
+    .hero-band > div:last-child { border-bottom: 0; }
+    .summary .stats { grid-template-columns: 1fr; }
+    .summary .stats > div {
+      border-right: 0;
+      border-bottom: var(--hairline) solid var(--ink);
+      padding: 20px 0 !important;
+    }
+    .summary .stats > div:last-child { border-bottom: 0; }
+    .foot-inner { grid-template-columns: 1fr; }
+    .foot-meta { text-align: left; }
+    .actions { flex-wrap: wrap; }
+    .actions a {
+      flex: 1 1 50%;
+      border-bottom: var(--hairline) solid var(--ink);
+    }
+    .actions a:nth-child(2n) { border-right: 0; }
+  }
+
+  @media print {
+    .topbar, .actions, footer { display: none; }
+    body { background: white; }
+    .hero { padding: 24px; }
+    section.block .block-inner { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="left"><a href="/" class="back"><span class="arrow">←</span> JUSTIN ⁄ INDEX</a></div>
+  <div class="right">
+    <span>FILE 002 — RESUME.HTML</span>
+    <span id="bos-meta">BOS · -- · --</span>
+    <span class="blink">UPDATED MAY 2026</span>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">⌗ CURRICULUM VITAE ⁄ SEO · AEO · AI</div>
+    <h1>
+      Justin <span class="ital">Snider,</span><br/>
+      <span class="punch">SEO/AEO LEAD.</span>
+    </h1>
+
+    <div class="hero-band">
+      <div>
+        <div class="key">— SUMMARY</div>
+        <div class="val">Agentic AI content leader. 16 years at the intersection of organic growth and generative search.</div>
+      </div>
+      <div>
+        <div class="key">— BASED</div>
+        <div class="val">Boston, MA<br/>Remote since 2020</div>
+      </div>
+      <div>
+        <div class="key">— REACH</div>
+        <div class="val"><span class="reveal" data-type="email" data-user="jus" data-domain="hey.com">[click to reveal email]<span class="hint">↵</span></span><br/><span class="reveal" data-type="phone" data-p1="512" data-p2="300" data-p3="4054">[click to reveal phone]<span class="hint">↵</span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<nav class="actions">
+  <a href="#summary"><span class="num">01</span>SUMMARY<span class="arrow">↓</span></a>
+  <a href="#experience"><span class="num">02</span>EXPERIENCE<span class="arrow">↓</span></a>
+  <a href="#skills"><span class="num">03</span>SKILLS<span class="arrow">↓</span></a>
+  <a href="#outside"><span class="num">04</span>OUTSIDE<span class="arrow">↓</span></a>
+  <a href="#" onclick="window.print(); return false;"><span class="num">05</span>PRINT<span class="arrow">↗</span></a>
+</nav>
+
+<section class="block" id="summary">
+  <div class="block-inner">
+    <div class="block-head">
+      <div class="label">⁂ 001 ⁄ ABOUT</div>
+      <h2>The <span class="ital">summary.</span></h2>
+      <div class="meta">⌗ 16 YRS<br/>⌗ FINTECH · CRYPTO<br/>⌗ AI-NATIVE</div>
+    </div>
+    <div class="summary">
+      <p>
+        I architect <span class="mark-g ital">agentic workflows</span> that scale content production by
+        thousands of pieces per quarter — while keeping the semantic density LLMs need to find,
+        cite, and recall.
+      </p>
+      <p>
+        Sixteen years of organic growth, now pointed squarely at the <span class="mark-b ital">retrieval-augmented web</span>.
+        Heavy lifting in fintech, crypto, and prediction markets.
+      </p>
+
+      <ul class="bullets">
+        <li><span class="dot" style="--bullet-color: var(--pastel-mint);"></span>16 years an SEO ⁄ AEO ⁄ ASO</li>
+        <li><span class="dot" style="--bullet-color: var(--pastel-sky);"></span>Fintech ⁄ Prediction Markets</li>
+        <li><span class="dot" style="--bullet-color: var(--pastel-peach);"></span>Crypto ⁄ Web3</li>
+        <li><span class="dot" style="--bullet-color: var(--pastel-lavender);"></span>AI Native</li>
+      </ul>
+
+      <div class="stats">
+        <div>
+          <div class="num">~50<span class="ital">%</span></div>
+          <div class="lbl">⁄ AI citation &amp; recall lift</div>
+        </div>
+        <div>
+          <div class="num">2M<span class="ital">+</span></div>
+          <div class="lbl">⁄ monthly visits owned</div>
+        </div>
+        <div>
+          <div class="num">24</div>
+          <div class="lbl">⁄ global markets led</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="experience" style="background: linear-gradient(180deg, transparent 0%, rgba(207,224,238,0.25) 100%);">
+  <div class="block-inner">
+    <div class="block-head">
+      <div class="label">⁂ 002 ⁄ WORK</div>
+      <h2>What I've <span class="ital">done.</span></h2>
+      <div class="meta">⌗ 2010 → PRESENT<br/>⌗ MOSTLY REMOTE</div>
+    </div>
+
+    <div class="highlights">
+      <div class="hl-card" style="--hl-bg: var(--pastel-sky);">
+        <div class="hl-key">— SECTORS</div>
+        <div class="hl-val">Fintech, crypto, web3 &amp; prediction markets. Shipped growth at <strong>Crypto.com</strong>, <strong>Binance.US</strong>, <strong>Public.com</strong>, <strong>OG.com</strong>, and <strong>Finder.com</strong>.</div>
+      </div>
+      <div class="hl-card" style="--hl-bg: var(--pastel-mint);">
+        <div class="hl-key">— OPERATING MODE</div>
+        <div class="hl-val">Comfortable as the <strong>only SEO in the room</strong> at a startup, or running cross-functional plays with product, eng, design, and analytics inside a public company.</div>
+      </div>
+      <div class="hl-card" style="--hl-bg: var(--pastel-peach);">
+        <div class="hl-key">— AGENCY ROOTS</div>
+        <div class="hl-val">Started at an agency, went in-house, then came back as <strong>SEO Director at Victorious SEO</strong> overseeing 120+ client engagements. The round trip built the muscle for fast diagnosis and roadmap design.</div>
+      </div>
+      <div class="hl-card" style="--hl-bg: var(--pastel-lavender);">
+        <div class="hl-key">— BUILT FROM ZERO</div>
+        <div class="hl-val">Founded the <strong>SEO program at Credit Karma</strong>. Took <strong>Public.com</strong> from 0 → 100K+ organic visits/month inside six months. Helped launch the <strong>first-of-its-kind crypto MCP</strong> at Crypto.com. Currently building <strong>OG.com</strong> from 0 → 100K organic visits.</div>
+      </div>
+      <div class="hl-card" style="--hl-bg: var(--pastel-butter);">
+        <div class="hl-key">— GLOBAL REACH</div>
+        <div class="hl-val">Led organic across <strong>30+ countries at Finder</strong> and <strong>24 markets at Crypto.com</strong> — translation, localization, and entity strategy at scale.</div>
+      </div>
+      <div class="hl-card" style="--hl-bg: var(--pastel-rose);">
+        <div class="hl-key">— NOW</div>
+        <div class="hl-val">Pointing all of it at the <strong>retrieval-augmented web</strong>: agentic content workflows, MCP servers, Knowledge Graph authority, and AI-citation-ready architecture.</div>
+      </div>
+    </div>
+
+    <div class="jobs">
+      <div class="job" style="--hl-color: var(--pastel-sky);">
+        <div class="when">
+          JUN 2025 → <span class="now">NOW</span>
+          <span class="loc">REMOTE</span>
+        </div>
+        <div class="body">
+          <h3>SEO ⁄ AEO ⁄ ASO <span class="ital">Lead</span></h3>
+          <div class="company">OG.com · Prediction Market arm of Crypto.com</div>
+          <ul>
+            <li>Leading <strong>SEO/AEO/ASO</strong> for OG.com (prev. Crypto.com Predictions) — a prediction-market product from Crypto.com.</li>
+            <li>Orchestrated the transition from legacy SEO to a <span class="hl">"Search-to-LLM" pipeline</span>, increasing AI citation and recall visibility by ~50%.</li>
+            <li>Owned organic discovery and full search strategy for a <strong>2M+ monthly-visit</strong> global platform.</li>
+            <li>Directed technical initiatives — Core Web Vitals, crawl efficiency — to ensure seamless ingestion for both traditional bots and AI-driven scrapers.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="job" style="--hl-color: var(--pastel-mint);">
+        <div class="when">
+          SEP 2023 → JUN 2025
+          <span class="loc">REMOTE</span>
+        </div>
+        <div class="body">
+          <h3>Sr. SEO <span class="ital">Analyst</span></h3>
+          <div class="company">Crypto.com</div>
+          <ul>
+            <li>Built multiple <strong>agentic workflows</strong> to scale content production by 1000s of pieces/quarter via Profound &amp; AirOps.</li>
+            <li><span class="hl">MCP Server Development</span>: launched the first ever crypto MCP with real-time agentic data retrieval.</li>
+            <li>Prepared the platform for generative and AI-driven search via entity optimization, Knowledge Graph development, and structured-data strategy.</li>
+            <li>Led global content operations across <strong>24 markets</strong>, including translation and localization.</li>
+            <li>Strategic citation seeding via multi-channel program with 3rd-party publishers to drive entity co-occurrence and improve vector similarity.</li>
+            <li>Partnered cross-functionally with product, engineering, design, analytics, and brand to align site architecture with business priorities.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="job" style="--hl-color: var(--pastel-butter);">
+        <div class="when">
+          FEB 2023 → JUN 2023
+          <span class="loc">REMOTE</span>
+        </div>
+        <div class="body">
+          <h3>Sr. Manager, Owned &amp; <span class="ital">Earned Media</span></h3>
+          <div class="company">Binance.US · (US ops shut down)</div>
+          <ul>
+            <li>Responsible for <strong>SEO, ASO, &amp; CRO</strong> for the US arm of a global crypto platform.</li>
+            <li>Led site migration, built app store testing plans, created content strategy.</li>
+            <li>Identified opportunities to <span class="hl">increase average deposits by 30%</span>.</li>
+            <li>Partnered with CRM &amp; lifecycle teams to inform email &amp; SMS journeys using search insights.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="job" style="--hl-color: var(--pastel-lavender);">
+        <div class="when">
+          SEP 2021 → OCT 2022
+          <span class="loc">REMOTE</span>
+        </div>
+        <div class="body">
+          <h3>Global Publisher · Share Trading &amp; <span class="ital">Crypto</span></h3>
+          <div class="company">Finder.com · APAC Growth Manager</div>
+          <ul>
+            <li>Directed and managed content production for a global comparison site across <strong>30+ countries</strong>, focusing on content hubs and programmatic content production.</li>
+            <li>Responsible for <span class="hl">15% incremental revenue growth</span> via SEM, SEO, CRO &amp; content production.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="job" style="--hl-color: var(--pastel-peach);">
+        <div class="when">
+          MAY 2020 → SEP 2021
+          <span class="loc">REMOTE</span>
+        </div>
+        <div class="body">
+          <h3>SEO <span class="ital">Lead</span></h3>
+          <div class="company">Public.com</div>
+          <ul>
+            <li>Drove inbound growth from <strong>0 → 50K organic visits</strong> in first 3 months, <strong>100K+/month</strong> after 6.</li>
+            <li>Increased <span class="hl">organic traffic by 80% &amp; sign-ups by 45%</span> in first 6 months.</li>
+            <li>Created search strategy spanning SEO, ASO, content &amp; paid search.</li>
+            <li>Launched net-new product (crypto trading), including URL structure &amp; supporting content.</li>
+            <li>Collaborated with product &amp; engineering to resolve tech-SEO issues; built reporting dashboards; managed ASO and search-ad budgets.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="job" style="--hl-color: var(--pastel-rose);">
+        <div class="when">
+          JAN 2019 → MAY 2020
+          <span class="loc">SAN FRANCISCO</span>
+        </div>
+        <div class="body">
+          <h3>SEO <span class="ital">Director</span></h3>
+          <div class="company">Victorious SEO</div>
+          <ul>
+            <li>Directed SEO strategies for an award-winning SF-based SEO-only agency.</li>
+            <li>Managed a team of SEOs delivering impact to <strong>120+ clients</strong>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="job" style="--hl-color: var(--pastel-sky);">
+        <div class="when">
+          MAR 2010 → 2019
+          <span class="loc">SEATTLE ⁄ SF</span>
+        </div>
+        <div class="body">
+          <h3>Various SEO &amp; <span class="ital">Marketing Roles</span></h3>
+          <div class="company">Credit Karma · Agencies · Startups · Retailers</div>
+          <ul>
+            <li>Created the <strong>SEO program at Credit Karma</strong>.</li>
+            <li>Held various full-time &amp; consulting SEO roles at agencies, startups, and retailers.</li>
+            <li>Created SEO strategies including audits, roadmaps, CRO, testing plans, and reporting.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="skills" style="background: linear-gradient(180deg, rgba(245,214,198,0.18) 0%, transparent 100%);">
+  <div class="block-inner">
+    <div class="block-head">
+      <div class="label">⁂ 003 ⁄ TOOLKIT</div>
+      <h2>Skills &amp; <span class="ital">stack.</span></h2>
+      <div class="meta">⌗ AI-FIRST<br/>⌗ TECHNICAL<br/>⌗ HANDS-ON</div>
+    </div>
+
+    <div class="skills-grid">
+      <div class="skills-row">
+        <div class="cat" style="--cat-color: var(--pastel-mint);">AIO ⁄ GEO</div>
+        <div class="chips">
+          <span class="chip">LLM search optimization</span>
+          <span class="chip">Entity SEO</span>
+          <span class="chip">Structured data &amp; schema strategy</span>
+          <span class="chip">Knowledge Graph authority mapping</span>
+          <span class="chip">Generative search visibility</span>
+          <span class="chip">MCP server development</span>
+          <span class="chip">Claude Desktop integration</span>
+          <span class="chip">OpenAI ⁄ Anthropic</span>
+          <span class="chip">RAG-readiness auditing</span>
+          <span class="chip">Cross-channel AI discovery</span>
+        </div>
+      </div>
+      <div class="skills-row">
+        <div class="cat" style="--cat-color: var(--pastel-sky);">SEARCH</div>
+        <div class="chips">
+          <span class="chip">Technical SEO</span>
+          <span class="chip">International</span>
+          <span class="chip">Local</span>
+          <span class="chip">Vector-based search</span>
+          <span class="chip">Content strategy</span>
+          <span class="chip">Semantic density optimization</span>
+          <span class="chip">Link building</span>
+          <span class="chip">ASO</span>
+          <span class="chip">AI-driven forecasting</span>
+          <span class="chip">SEO analysis &amp; reporting</span>
+        </div>
+      </div>
+      <div class="skills-row">
+        <div class="cat" style="--cat-color: var(--pastel-butter);">TOOLS</div>
+        <div class="chips">
+          <span class="chip">Claude Code</span>
+          <span class="chip">Profound</span>
+          <span class="chip">Ahrefs Brand Radar</span>
+          <span class="chip">AirOps</span>
+          <span class="chip">GA4</span>
+          <span class="chip">Search Console</span>
+          <span class="chip">Tag Manager</span>
+          <span class="chip">Screaming Frog</span>
+          <span class="chip">WordLift</span>
+          <span class="chip">BigQuery</span>
+          <span class="chip">SQL</span>
+          <span class="chip">Looker</span>
+          <span class="chip">Optimizely</span>
+          <span class="chip">Headless CMS</span>
+        </div>
+      </div>
+      <div class="skills-row">
+        <div class="cat" style="--cat-color: var(--pastel-lavender);">EDUCATION</div>
+        <div class="chips">
+          <span class="chip">Antioch University, Seattle · 2009–2011</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="outside">
+  <div class="block-inner">
+    <div class="block-head">
+      <div class="label">⁂ 004 ⁄ OFF THE CLOCK</div>
+      <h2>Outside of <span class="ital">work.</span></h2>
+      <div class="meta">⌗ ALWAYS<br/>⌗ COOKING<br/>⌗ BUILDING</div>
+    </div>
+    <div class="outside">
+      <span class="tag" style="--tag-color: var(--pastel-peach);">cooking</span>
+      <span class="tag" style="--tag-color: var(--pastel-sky);">travel</span>
+      <span class="tag" style="--tag-color: var(--pastel-mint);">soccer</span>
+      <span class="tag" style="--tag-color: var(--pastel-butter);">learning Italian</span>
+      <span class="tag" style="--tag-color: var(--pastel-rose);">sports cards</span>
+      <span class="tag special">currently building sports simulation games in Claude Code →</span>
+    </div>
+  </div>
+</section>
+
+<footer style="background: linear-gradient(180deg, var(--pastel-butter) 0%, var(--paper) 100%); border-top: var(--hairline) solid var(--ink);">
+  <div class="foot-inner">
+    <div class="foot-mark">— let's <span class="roman">talk.</span></div>
+    <div class="foot-meta">
+      ✕ EMAIL · <span class="reveal" data-type="email" data-user="jus" data-domain="hey.com">[CLICK TO REVEAL]<span class="hint">↵</span></span><br/>
+      ✕ PHONE · <span class="reveal" data-type="phone" data-p1="512" data-p2="300" data-p3="4054">[CLICK TO REVEAL]<span class="hint">↵</span></span><br/>
+      ✕ LOCATION · BOSTON, MA<br/>
+      ✕ ALSO · WEREGOINGPLACES.XYZ
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>© 2026 JUSTIN SNIDER. RESUME.HTML</span>
+    <span>BUILT WITH CLAUDE CODE IN 3 MINUTES.</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const el = document.getElementById('bos-meta');
+  if (!el) return;
+  const WCODE = {
+    0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+    45: '🌫️', 48: '🌫️',
+    51: '🌦️', 53: '🌦️', 55: '🌦️', 56: '🌦️', 57: '🌦️',
+    61: '🌧️', 63: '🌧️', 65: '🌧️', 66: '🌧️', 67: '🌧️',
+    71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️',
+    80: '🌧️', 81: '🌧️', 82: '🌧️',
+    85: '🌨️', 86: '🌨️',
+    95: '⛈️', 96: '⛈️', 99: '⛈️'
+  };
+  let weather = '';
+  function fmtTime() {
+    return new Date().toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+  function render() {
+    el.textContent = `BOS · ${fmtTime()}${weather ? ' · ' + weather : ''}`;
+  }
+  async function fetchWeather() {
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=42.36&longitude=-71.06&current=temperature_2m,weather_code&temperature_unit=fahrenheit');
+      const d = await r.json();
+      const t = Math.round(d.current.temperature_2m);
+      const e = WCODE[d.current.weather_code] || '';
+      weather = `${e} ${t}°F`;
+    } catch (err) {
+      weather = '';
+    }
+    render();
+  }
+  render();
+  fetchWeather();
+  setInterval(render, 30000);
+  setInterval(fetchWeather, 600000);
+})();
+</script>
+
+<script>
+(function () {
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('.reveal');
+    if (!el || el.dataset.revealed === 'true') return;
+    e.preventDefault();
+    var type = el.dataset.type;
+    if (type === 'email') {
+      var addr = el.dataset.user + '@' + el.dataset.domain;
+      var a = document.createElement('a');
+      a.href = 'mailto:' + addr;
+      a.textContent = addr;
+      el.innerHTML = '';
+      el.appendChild(a);
+      el.dataset.revealed = 'true';
+    } else if (type === 'phone') {
+      var num = el.dataset.p1 + '.' + el.dataset.p2 + '.' + el.dataset.p3;
+      var tel = el.dataset.p1 + el.dataset.p2 + el.dataset.p3;
+      var a2 = document.createElement('a');
+      a2.href = 'tel:+1' + tel;
+      a2.textContent = num;
+      el.innerHTML = '';
+      el.appendChild(a2);
+      el.dataset.revealed = 'true';
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
