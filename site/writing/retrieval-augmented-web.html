@@ -1,0 +1,1278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Retrieval-Augmented Web — Notes from the SEO/AEO Frontier</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --paper: #f1f1ec;
+    --ink: #0e0e10;
+    --ink-soft: #2a2a2e;
+    --muted: #6b6b70;
+
+    --pastel-mint:    #c9e4d4;
+    --pastel-lavender:#d9d2ee;
+    --pastel-peach:   #f5d6c6;
+    --pastel-sky:     #cfe0ee;
+    --pastel-butter:  #efe7c7;
+    --pastel-rose:    #ecd2d8;
+
+    --accent-green:   #2ec27e;
+    --accent-blue:    #3aa0ff;
+
+    --hairline: 1.5px;
+    --measure: 68ch;
+    --content-max: 1280px;
+    --gutter: 32px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: inherit; text-decoration: none; }
+
+  /* === Topbar === */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--paper);
+    border-bottom: var(--hairline) solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .topbar > div { padding: 12px 20px; }
+  .topbar .left { border-right: var(--hairline) solid var(--ink); }
+  .topbar .right {
+    border-left: var(--hairline) solid var(--ink);
+    display: flex; align-items: center; gap: 16px;
+  }
+  .topbar a:hover { background: var(--ink); color: var(--paper); }
+  .topbar .back { display: inline-flex; align-items: center; gap: 8px; }
+  .topbar .back .arrow { transition: transform 0.2s ease; display: inline-block; }
+  .topbar .back:hover .arrow { transform: translateX(-3px); }
+  .topbar .blink { display: inline-flex; align-items: center; gap: 8px; }
+  .topbar .blink::after {
+    content: "";
+    display: inline-block;
+    width: 9px; height: 9px;
+    background: var(--accent-green);
+    box-shadow: 0 0 0 2px rgba(46,194,126,0.18);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { background: var(--accent-green); box-shadow: 0 0 0 2px rgba(46,194,126,0.18); }
+    50%      { background: var(--accent-blue);  box-shadow: 0 0 0 4px rgba(58,160,255,0.22); }
+  }
+
+  /* === Reading progress bar === */
+  .progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    width: 0%;
+    background: var(--accent-green);
+    z-index: 60;
+    transition: width 0.08s linear;
+  }
+
+  /* === Article header === */
+  .post-header {
+    border-bottom: var(--hairline) solid var(--ink);
+    padding: 64px var(--gutter) 48px;
+    background:
+      radial-gradient(ellipse at 88% 12%, var(--pastel-sky) 0%, transparent 55%),
+      radial-gradient(ellipse at 8% 88%, var(--pastel-peach) 0%, transparent 50%),
+      var(--paper);
+  }
+  .post-header-inner {
+    max-width: var(--content-max);
+    margin: 0 auto;
+  }
+  .crumb {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+  .crumb::before {
+    content: "";
+    width: 36px;
+    height: var(--hairline);
+    background: var(--ink);
+  }
+  .crumb .sep { opacity: 0.4; }
+  .crumb a:hover { background: var(--ink); color: var(--paper); padding: 0 4px; }
+
+  .post-tag {
+    display: inline-block;
+    background: var(--pastel-butter);
+    border: var(--hairline) solid var(--ink);
+    padding: 4px 10px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .post-title {
+    font-family: "Instrument Serif", "Times New Roman", serif;
+    font-weight: 400;
+    font-size: clamp(48px, 8vw, 120px);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .post-title .ital { font-style: italic; }
+  .post-title .punch {
+    display: inline;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.04em 0.18em 0.08em;
+    line-height: 1;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    box-shadow: 6px 6px 0 0 var(--accent-green);
+  }
+
+  .post-deck {
+    margin: 32px 0 0;
+    max-width: 60ch;
+    font-family: "Instrument Serif", serif;
+    font-size: clamp(20px, 2vw, 26px);
+    line-height: 1.4;
+    color: var(--ink-soft);
+    text-wrap: pretty;
+  }
+  .post-deck .ital { font-style: italic; }
+
+  .post-meta {
+    margin-top: 40px;
+    border-top: var(--hairline) solid var(--ink);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .post-meta > div {
+    padding: 18px 20px 0 0;
+    border-right: var(--hairline) solid var(--ink);
+  }
+  .post-meta > div:last-child { border-right: 0; padding-right: 0; }
+  .post-meta > div:nth-child(n+2) { padding-left: 20px; }
+  .post-meta .key {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .post-meta .val {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+
+  /* === Article body layout === */
+  .post-body {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: 64px var(--gutter) 48px;
+    display: grid;
+    grid-template-columns: 220px 1fr 200px;
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* TOC rail (left) */
+  .toc {
+    position: sticky;
+    top: 80px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+  .toc .label {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: var(--hairline) solid var(--ink);
+  }
+  .toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: toc;
+  }
+  .toc li {
+    counter-increment: toc;
+    padding: 8px 0;
+    line-height: 1.4;
+    border-bottom: var(--hairline) dashed rgba(14,14,16,0.18);
+  }
+  .toc li:last-child { border-bottom: 0; }
+  .toc a {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    color: var(--ink-soft);
+    transition: color 0.15s ease;
+  }
+  .toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .toc a:hover, .toc a.active {
+    color: var(--ink);
+  }
+  .toc a.active::before { color: var(--accent-green); }
+
+  /* Article main column */
+  article {
+    max-width: var(--measure);
+    width: 100%;
+    justify-self: center;
+  }
+  article > * + * { margin-top: 24px; }
+
+  article h2 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-size: clamp(32px, 4vw, 48px);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin: 56px 0 8px;
+    padding-top: 24px;
+    border-top: var(--hairline) solid var(--ink);
+    scroll-margin-top: 80px;
+    text-wrap: balance;
+  }
+  article h2 .ital { font-style: italic; }
+  article h2::before {
+    content: "§ " counter(section, decimal-leading-zero);
+    counter-increment: section;
+    display: block;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  article { counter-reset: section; }
+
+  article h3 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: clamp(22px, 2.4vw, 28px);
+    line-height: 1.2;
+    margin: 32px 0 4px;
+    color: var(--ink);
+  }
+
+  article p {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--ink-soft);
+    text-wrap: pretty;
+  }
+  article p strong { color: var(--ink); font-weight: 700; }
+  article p em { font-style: italic; color: var(--ink); }
+  article p a {
+    color: var(--ink);
+    border-bottom: var(--hairline) solid var(--ink);
+    padding-bottom: 1px;
+  }
+  article p a:hover {
+    background: var(--accent-green);
+  }
+  article p .hl-mint { background: var(--pastel-mint); padding: 0 4px; color: var(--ink); }
+  article p .hl-sky { background: var(--pastel-sky); padding: 0 4px; color: var(--ink); }
+  article p .hl-peach { background: var(--pastel-peach); padding: 0 4px; color: var(--ink); }
+
+  /* Lede paragraph */
+  article .lede {
+    font-family: "Instrument Serif", serif;
+    font-size: clamp(22px, 2.4vw, 28px);
+    line-height: 1.4;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  article .lede::first-letter {
+    font-family: "Instrument Serif", serif;
+    float: left;
+    font-size: 5.5em;
+    line-height: 0.85;
+    padding: 6px 12px 0 0;
+    color: var(--ink);
+    background: var(--pastel-butter);
+    margin: 4px 8px 0 0;
+  }
+
+  /* Lists */
+  article ul, article ol {
+    padding: 0;
+    list-style: none;
+    counter-reset: list;
+  }
+  article li {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ink-soft);
+    padding-left: 28px;
+    position: relative;
+    margin-bottom: 8px;
+  }
+  article ul li::before {
+    content: "→";
+    position: absolute;
+    left: 0; top: 0;
+    color: var(--ink);
+    font-weight: 700;
+  }
+  article ol li {
+    counter-increment: list;
+  }
+  article ol li::before {
+    content: counter(list, decimal-leading-zero);
+    position: absolute;
+    left: 0; top: 0;
+    color: var(--ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  article li strong { color: var(--ink); font-weight: 700; }
+
+  /* Pull quote */
+  .pullquote {
+    margin: 48px 0 !important;
+    padding: 32px 0;
+    border-top: var(--hairline) solid var(--ink);
+    border-bottom: var(--hairline) solid var(--ink);
+    font-family: "Instrument Serif", serif;
+    font-size: clamp(28px, 3.6vw, 44px);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  .pullquote .mark {
+    font-style: italic;
+    color: var(--accent-green);
+    margin-right: 0.1em;
+  }
+  .pullquote .ital { font-style: italic; }
+  .pullquote-cite {
+    margin-top: 16px !important;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Callout */
+  .callout {
+    margin: 32px 0 !important;
+    padding: 20px 22px;
+    background: var(--callout-bg, var(--pastel-mint));
+    border: var(--hairline) solid var(--ink);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+  }
+  .callout .icon {
+    font-family: "Instrument Serif", serif;
+    font-size: 32px;
+    line-height: 1;
+    font-style: italic;
+  }
+  .callout .body p { color: var(--ink); margin: 0 !important; font-size: 13px; }
+  .callout .body .label {
+    display: block;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    color: var(--ink);
+    opacity: 0.7;
+  }
+
+  /* Code / inline */
+  article code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    background: var(--paper);
+    border: var(--hairline) solid var(--ink);
+    padding: 1px 5px;
+    color: var(--ink);
+  }
+
+  pre.code-block {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 20px 22px;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    border: var(--hairline) solid var(--ink);
+    margin: 32px 0 !important;
+  }
+  pre.code-block .label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent-green);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: var(--hairline) solid rgba(241,241,236,0.2);
+  }
+
+  /* Image figure */
+  figure.fig {
+    margin: 40px 0 !important;
+  }
+  figure.fig .frame {
+    border: var(--hairline) solid var(--ink);
+    background: var(--frame-bg, var(--pastel-sky));
+    aspect-ratio: 16 / 9;
+    position: relative;
+    overflow: hidden;
+  }
+  figure.fig .frame::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0 22px,
+      rgba(14,14,16,0.06) 22px 23px
+    );
+  }
+  figure.fig .frame::after {
+    content: attr(data-label);
+    position: absolute;
+    top: 12px; left: 12px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 4px 8px;
+  }
+  figure.fig figcaption {
+    margin-top: 12px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--muted);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+  }
+  figure.fig figcaption::before {
+    content: "FIG.";
+    color: var(--ink);
+    letter-spacing: 0.14em;
+    font-weight: 700;
+  }
+
+  /* Stats row */
+  .stats-row {
+    margin: 40px 0 !important;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: var(--hairline) solid var(--ink);
+  }
+  .stats-row > div {
+    padding: 18px 20px;
+    border-right: var(--hairline) solid var(--ink);
+    background: var(--stat-bg);
+  }
+  .stats-row > div:last-child { border-right: 0; }
+  .stats-row .num {
+    font-family: "Instrument Serif", serif;
+    font-size: clamp(36px, 4vw, 56px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .stats-row .num .ital { font-style: italic; }
+  .stats-row .lbl {
+    margin-top: 6px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Aside (right rail) */
+  .aside {
+    position: sticky;
+    top: 80px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+  }
+  .aside-card {
+    border: var(--hairline) solid var(--ink);
+    background: var(--paper);
+    margin-bottom: 16px;
+  }
+  .aside-card .head {
+    padding: 10px 12px;
+    border-bottom: var(--hairline) solid var(--ink);
+    background: var(--pastel-lavender);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .aside-card .body {
+    padding: 12px;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  .aside-card .body ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .aside-card .body li {
+    padding: 6px 0;
+    border-bottom: var(--hairline) dashed rgba(14,14,16,0.18);
+  }
+  .aside-card .body li:last-child { border-bottom: 0; }
+  .aside-card .body a:hover { background: var(--ink); color: var(--paper); }
+
+  .share-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .share-row a {
+    padding: 8px 10px;
+    border: var(--hairline) solid var(--ink);
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .share-row a:hover { background: var(--ink); color: var(--paper); }
+
+  /* Footnotes */
+  .footnotes {
+    margin-top: 64px !important;
+    padding-top: 24px;
+    border-top: var(--hairline) solid var(--ink);
+  }
+  .footnotes .label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .footnotes ol {
+    counter-reset: fn;
+    padding-left: 0;
+  }
+  .footnotes li {
+    counter-increment: fn;
+    font-size: 12px;
+    padding-left: 32px;
+  }
+  .footnotes li::before {
+    content: "[" counter(fn) "]";
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  /* End mark */
+  .end-mark {
+    text-align: center;
+    margin: 64px 0 !important;
+    font-family: "Instrument Serif", serif;
+    font-size: 24px;
+    color: var(--ink);
+    letter-spacing: 0.4em;
+  }
+
+  /* Author card */
+  .author-card {
+    margin: 48px auto 0;
+    max-width: var(--content-max);
+    border-top: var(--hairline) solid var(--ink);
+    border-bottom: var(--hairline) solid var(--ink);
+    padding: 32px var(--gutter);
+    background: var(--pastel-mint);
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: 24px;
+    align-items: center;
+  }
+  .author-card .avatar {
+    width: 80px;
+    height: 80px;
+    background: var(--ink);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Instrument Serif", serif;
+    font-size: 36px;
+    font-style: italic;
+  }
+  .author-card .name {
+    font-family: "Instrument Serif", serif;
+    font-size: 28px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .author-card .name .ital { font-style: italic; }
+  .author-card .role {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .author-card .follow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    padding: 10px 16px;
+    border: var(--hairline) solid var(--ink);
+    background: var(--paper);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .author-card .follow:hover { background: var(--ink); color: var(--paper); }
+
+  /* Related */
+  .related {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: 64px var(--gutter) 32px;
+  }
+  .related-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: var(--hairline) solid var(--ink);
+  }
+  .related-head h3 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-size: clamp(28px, 3.5vw, 44px);
+    line-height: 1;
+    margin: 0;
+  }
+  .related-head h3 .ital { font-style: italic; }
+  .related-head .label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border: var(--hairline) solid var(--ink);
+  }
+  .related-card {
+    padding: 20px;
+    border-right: var(--hairline) solid var(--ink);
+    background: var(--card-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 180px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .related-card:last-child { border-right: 0; }
+  .related-card:hover { background: var(--ink); color: var(--paper); }
+  .related-card .tag {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    align-self: flex-start;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 4px 8px;
+  }
+  .related-card:hover .tag { background: var(--paper); color: var(--ink); }
+  .related-card .t {
+    font-family: "Instrument Serif", serif;
+    font-size: 24px;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin-top: auto;
+  }
+  .related-card .t .ital { font-style: italic; }
+  .related-card .meta {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+  .related-card:hover .meta { color: rgba(241,241,236,0.7); }
+
+  /* Footer */
+  footer {
+    background: linear-gradient(180deg, var(--pastel-butter) 0%, var(--paper) 100%);
+    border-top: var(--hairline) solid var(--ink);
+    padding: 56px var(--gutter) 32px;
+  }
+  .foot-inner {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+  }
+  .foot-mark {
+    font-family: "Instrument Serif", serif;
+    font-style: italic;
+    font-size: clamp(40px, 6vw, 96px);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+  }
+  .foot-mark .roman { font-style: normal; }
+  .foot-meta {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    text-align: right;
+    line-height: 2;
+    color: var(--ink-soft);
+  }
+  .foot-bottom {
+    max-width: var(--content-max);
+    margin: 40px auto 0;
+    padding-top: 16px;
+    border-top: var(--hairline) solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .post-body {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+    .toc, .aside { position: static; }
+    .toc { order: -1; }
+    article { max-width: var(--measure); }
+  }
+  @media (max-width: 720px) {
+    :root { --gutter: 16px; }
+    .post-meta { grid-template-columns: 1fr 1fr; }
+    .post-meta > div {
+      padding: 16px 16px 0 0 !important;
+      border-bottom: var(--hairline) solid var(--ink);
+      padding-bottom: 16px !important;
+    }
+    .post-meta > div:nth-child(2n) { border-right: 0; }
+    .stats-row { grid-template-columns: 1fr; }
+    .stats-row > div {
+      border-right: 0;
+      border-bottom: var(--hairline) solid var(--ink);
+    }
+    .stats-row > div:last-child { border-bottom: 0; }
+    .related-grid { grid-template-columns: 1fr; }
+    .related-card { border-right: 0; border-bottom: var(--hairline) solid var(--ink); }
+    .related-card:last-child { border-bottom: 0; }
+    .author-card { grid-template-columns: 60px 1fr; }
+    .author-card .avatar { width: 60px; height: 60px; font-size: 28px; }
+    .author-card .follow { grid-column: 1 / -1; text-align: center; }
+    .foot-inner { grid-template-columns: 1fr; }
+    .foot-meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<header class="topbar">
+  <div class="left"><a href="/" class="back"><span class="arrow">←</span> JUSTIN ⁄ INDEX</a></div>
+  <div class="right">
+    <span>FILE 003 — POST.HTML</span>
+    <span id="bos-meta">BOS · -- · --</span>
+    <span class="blink">PUBLISHED MAY 7, 2026</span>
+  </div>
+</header>
+
+<section class="post-header">
+  <div class="post-header-inner">
+    <div class="crumb">
+      <a href="/">JUSTIN</a>
+      <span class="sep">⁄</span>
+      <a href="/writing/">WRITING</a>
+      <span class="sep">⁄</span>
+      <span>NOTES ON BUILDING</span>
+    </div>
+
+    <span class="post-tag">⁂ ESSAY · 12 MIN READ</span>
+
+    <h1 class="post-title">
+      The retrieval-augmented<br/>
+      web is <span class="punch">already here.</span>
+    </h1>
+
+    <p class="post-deck">
+      Notes from eighteen months on the <span class="ital">SEO/AEO frontier</span> — what
+      breaks, what scales, and why the next decade of organic growth belongs to people
+      who can think like a crawler and a model at the same time.
+    </p>
+
+    <div class="post-meta">
+      <div>
+        <div class="key">— PUBLISHED</div>
+        <div class="val">May 7, 2026</div>
+      </div>
+      <div>
+        <div class="key">— AUTHOR</div>
+        <div class="val">Justin Snider</div>
+      </div>
+      <div>
+        <div class="key">— FILED UNDER</div>
+        <div class="val">SEO · AEO · LLM</div>
+      </div>
+      <div>
+        <div class="key">— READING TIME</div>
+        <div class="val">~12 minutes</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="post-body">
+
+  <!-- LEFT: Table of contents -->
+  <nav class="toc">
+    <div class="label">⁂ Contents</div>
+    <ol>
+      <li><a href="#section-1">The shift nobody scheduled</a></li>
+      <li><a href="#section-2">What "AEO" actually means</a></li>
+      <li><a href="#section-3">A new content stack</a></li>
+      <li><a href="#section-4">Three things that worked</a></li>
+      <li><a href="#section-5">Three things that didn't</a></li>
+      <li><a href="#section-6">What I'd do tomorrow</a></li>
+    </ol>
+  </nav>
+
+  <!-- CENTER: Article -->
+  <article id="article">
+
+    <p class="lede">
+      Sometime around the middle of last year, the search team I'd been running stopped
+      thinking about Google and started thinking about <em>retrieval</em>. Not because
+      anyone wrote a memo. Because the numbers told us to.
+    </p>
+
+    <p>
+      The traffic from traditional search kept its shape, more or less. But the traffic
+      from <strong>AI assistants</strong> — citations in Perplexity, references inside
+      ChatGPT answers, recall in Claude responses — went from a curiosity to a measurable
+      slice of pipeline. <span class="hl-mint">Roughly 50% of net-new high-intent visits</span>
+      came from somewhere a 2022-era SEO team would not have known to look.
+    </p>
+
+    <p>
+      This post is a field report. What follows is opinionated, occasionally wrong, and
+      based on the inside of two crypto platforms and a prediction market — but the
+      pattern generalizes well enough that it feels worth writing down.
+    </p>
+
+    <!-- Section 1 -->
+    <h2 id="section-1">The shift nobody <span class="ital">scheduled.</span></h2>
+
+    <p>
+      Most of the SEO playbook is predicated on a single assumption: a person types a
+      query, scans ten blue links, picks one, and clicks through. Every tactic — keyword
+      targeting, meta titles, schema, link building — is optimization on top of that
+      flow.
+    </p>
+
+    <p>
+      Retrieval-augmented generation breaks the assumption at the root. The "user" might
+      be a model. The "click" might be a citation. The "page" might never be visited
+      directly — only ingested, summarized, and quoted back inside another product. If
+      your content isn't <span class="hl-sky">structured for the model</span>, you don't
+      lose ranking. You disappear.
+    </p>
+
+    <div class="callout" style="--callout-bg: var(--pastel-butter);">
+      <div class="icon">i</div>
+      <div class="body">
+        <span class="label">Definition · AEO</span>
+        <p><strong>Answer Engine Optimization</strong> — the discipline of preparing a
+        site so that LLM-driven answer engines can find, ingest, and accurately cite
+        it. Overlaps with classical SEO at the technical layer, diverges sharply at the
+        content layer.</p>
+      </div>
+    </div>
+
+    <!-- Section 2 -->
+    <h2 id="section-2">What "AEO" <span class="ital">actually means.</span></h2>
+
+    <p>
+      It is tempting — and a little embarrassing — to slap a new acronym on top of
+      whatever you were doing already. So let's be precise. AEO is not "SEO with vibes."
+      Three things distinguish it:
+    </p>
+
+    <ol>
+      <li><strong>Semantic density over keyword density.</strong> Models don't count phrases. They embed them. A page that says one true thing well in 400 words will outperform a page that says the same thing badly in 2,000.</li>
+      <li><strong>Entity-first architecture.</strong> Every page is a node in a graph. The job is to make the relationships between nodes obvious — to crawlers, to models, and to the Knowledge Graph systems that sit between them.</li>
+      <li><strong>Citation as currency.</strong> When an LLM repeats your sentence, it's a citation. When it repeats your competitor's, it isn't. You're not optimizing for clicks; you're optimizing for the probability of being quoted.</li>
+    </ol>
+
+    <p>
+      None of this is alien to anyone who's done structured-data work, but the emphasis
+      shifts. The <code>schema.org</code> markup you used to bolt on at the end of a
+      project becomes the <em>scaffolding</em> the project hangs from.
+    </p>
+
+    <!-- Pull quote -->
+    <blockquote class="pullquote">
+      <span class="mark">"</span>You're not optimizing for clicks. You're optimizing for the <span class="ital">probability of being quoted.</span>
+    </blockquote>
+    <p class="pullquote-cite">— Notes from a Q1 2026 strategy review</p>
+
+    <!-- Section 3 -->
+    <h2 id="section-3">A new content <span class="ital">stack.</span></h2>
+
+    <p>
+      The team I lead now ships about 1,000 new pieces of content per quarter across
+      24 markets. None of it is "AI slop"; all of it is reviewed by humans before
+      publication. The trick is not LLMs writing pages. The trick is{" "}
+      <span class="hl-peach">agentic workflows that handle the 90% of work humans
+      hated anyway</span> — research, normalization, schema generation, internal
+      linking, localization scaffolding.
+    </p>
+
+    <h3>The pipeline, simplified</h3>
+
+    <pre class="code-block"><span class="label">⁂ pipeline.yaml</span>
+SOURCE   → entity ingestion (knowledge graph)
+RESEARCH → multi-agent retrieval + citation gathering
+DRAFT    → LLM produces structured outline + body
+LINT     → semantic density, schema, internal linking
+REVIEW   → human editor + brand pass
+PUBLISH  → CMS + RSS + sitemap + LLM-friendly index</pre>
+
+    <p>
+      The interesting work happens in <strong>LINT</strong>. That's where you reject
+      drafts that pass a grammar check but fail a model's recall test. We built a
+      reviewer agent whose only job is to ask: <em>"If a user asked an LLM about this
+      topic, would this page be a likely citation?"</em>
+    </p>
+
+    <figure class="fig">
+      <div class="frame" data-label="FIG. 01" style="--frame-bg: var(--pastel-sky);"></div>
+      <figcaption>01 — Volume vs. citation rate, before and after the LINT step. Volume held flat; citation rate ~3.2× over six months.</figcaption>
+    </figure>
+
+    <!-- Section 4 -->
+    <h2 id="section-4">Three things that <span class="ital">worked.</span></h2>
+
+    <div class="stats-row">
+      <div style="--stat-bg: var(--pastel-mint);">
+        <div class="num">~50<span class="ital">%</span></div>
+        <div class="lbl">⁄ AI citation lift</div>
+      </div>
+      <div style="--stat-bg: var(--pastel-sky);">
+        <div class="num">2M<span class="ital">+</span></div>
+        <div class="lbl">⁄ monthly visits</div>
+      </div>
+      <div style="--stat-bg: var(--pastel-peach);">
+        <div class="num">3.2<span class="ital">×</span></div>
+        <div class="lbl">⁄ citation rate (post-lint)</div>
+      </div>
+    </div>
+
+    <h3>1. Treating the Knowledge Graph as a product surface.</h3>
+    <p>
+      We stopped thinking of structured data as decoration and started maintaining it
+      with the same rigor as a production database. Schemas have owners. Entities have
+      versions. Reviews have changelogs. It's slow. It's worth it.
+    </p>
+
+    <h3>2. Citation seeding through real partnerships.</h3>
+    <p>
+      The fastest way to get a model to recall you is to be co-cited with the entities
+      it already trusts. We invested in <strong>multi-channel citation programs</strong>
+      with publishers we'd otherwise have ignored. Vector similarity, it turns out,
+      cares about who you stand next to.
+    </p>
+
+    <h3>3. Building the MCP server.</h3>
+    <p>
+      <a href="#">The crypto MCP we shipped</a> at Crypto.com lets AI assistants query
+      live wallet, price, and on-chain data through a single typed interface. It is
+      arguably more important to our long-term discoverability than any content we've
+      written, because it makes the platform <em>directly addressable</em> by agents.
+    </p>
+
+    <!-- Section 5 -->
+    <h2 id="section-5">Three things that <span class="ital">didn't.</span></h2>
+
+    <ul>
+      <li><strong>Mass programmatic SEO.</strong> The 2018 playbook of generating ten thousand thin pages for the long tail does not survive contact with answer engines. They flatten the long tail by definition. We killed about 40% of our programmatic content in Q1 and traffic went up.</li>
+      <li><strong>Hand-tuned meta titles.</strong> A small team can fuss over a few hundred meta titles a quarter. Across 24 markets and 1,000 pieces, you cannot. Letting the agent set them, with human review on the high-stakes 5%, was strictly better.</li>
+      <li><strong>Treating AI search as "another channel".</strong> It isn't a channel. It's the substrate the next channel will be built on. Reporting on it as if it were Bing — "this is the AI column" — encourages the wrong tradeoffs.</li>
+    </ul>
+
+    <!-- Section 6 -->
+    <h2 id="section-6">What I'd do <span class="ital">tomorrow.</span></h2>
+
+    <p>
+      If I were starting fresh on a content team in 2026, this is the order I'd build
+      things in:
+    </p>
+
+    <ol>
+      <li><strong>Audit your entity coverage</strong> before you write anything. If your top ten brand entities aren't cleanly modeled in your CMS, fix that first. Everything else compounds off it.</li>
+      <li><strong>Stand up an MCP server</strong> for whatever your platform is. Even a small one. The act of designing it forces the rest of your data architecture to clean up.</li>
+      <li><strong>Wire your editorial review to a model judge.</strong> Not as an oracle — as a second opinion. Disagree with it on purpose. Track when you were right and when it was.</li>
+      <li><strong>Measure citation, not just traffic.</strong> Tools like Profound make this tractable. If you're not measuring it, you can't tell whether you're winning.</li>
+      <li><strong>Hire one engineer per content lead.</strong> The bottleneck is no longer writing. It's the connective tissue between your CMS, your schema, your reviewer agents, and your reporting.</li>
+    </ol>
+
+    <div class="callout" style="--callout-bg: var(--pastel-lavender);">
+      <div class="icon">⁂</div>
+      <div class="body">
+        <span class="label">A note on tooling</span>
+        <p>I use <strong>Claude Code</strong>, <strong>Profound</strong>, and a handful of internal tools daily. None of this is sponsored; I just got tired of pretending you can do this work without writing code anymore.</p>
+      </div>
+    </div>
+
+    <p>
+      The retrieval-augmented web is not a future state. It's the medium we're already
+      operating in — most teams just haven't relabeled their dashboards yet. The teams
+      that do will find that the work feels surprisingly familiar: write one true thing,
+      structure it well, get it cited, repeat.
+    </p>
+
+    <p>
+      The only difference is the <em>reader</em> isn't always human anymore.
+    </p>
+
+    <div class="end-mark">⁂ ⁂ ⁂</div>
+
+    <!-- Footnotes -->
+    <section class="footnotes">
+      <div class="label">— Footnotes</div>
+      <ol>
+        <li>Numbers in this post are directional and slightly anonymized; precise figures are confidential.</li>
+        <li>"Semantic density" is borrowed loosely from information retrieval — the ratio of distinct, true claims per token.</li>
+        <li>For a longer treatment of MCP servers in a marketing context, see the <a href="#">Crypto.com MCP launch notes</a>.</li>
+      </ol>
+    </section>
+
+  </article>
+
+  <!-- RIGHT: Aside rail -->
+  <aside class="aside">
+
+    <div class="aside-card">
+      <div class="head">— On this page</div>
+      <div class="body">
+        <ul>
+          <li>~12 min read</li>
+          <li>2,400 words</li>
+          <li>6 sections</li>
+          <li>3 footnotes</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="aside-card">
+      <div class="head">— Share</div>
+      <div class="body">
+        <div class="share-row">
+          <a href="#">Copy link <span>↗</span></a>
+          <a href="#">LinkedIn <span>↗</span></a>
+          <a href="#">X ⁄ Twitter <span>↗</span></a>
+          <a href="#">Email <span>↗</span></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="aside-card">
+      <div class="head">— Subscribe</div>
+      <div class="body">
+        <p style="margin: 0 0 10px; font-family: 'Instrument Serif', serif; font-size: 16px; line-height: 1.3;">The Sunday Note. Weekly, brief, occasionally good.</p>
+        <a href="#" class="follow" style="display: inline-block; padding: 8px 12px; border: 1.5px solid var(--ink); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;">Subscribe →</a>
+      </div>
+    </div>
+
+  </aside>
+
+</div>
+
+<!-- Author card -->
+<div class="author-card">
+  <div class="avatar">J</div>
+  <div>
+    <div class="name">Justin <span class="ital">Snider</span></div>
+    <div class="role">SEO ⁄ AEO ⁄ ASO Lead · Writes occasionally · Building Sim10.ai</div>
+  </div>
+  <a href="/" class="follow">Read more →</a>
+</div>
+
+<footer>
+  <div class="foot-inner">
+    <div class="foot-mark">— see <span class="roman">you</span> around.</div>
+    <div class="foot-meta">
+      ✕ INDEX · WEREGOINGPLACES.XYZ<br/>
+      ✕ RESUME · ⁄JUSTIN-SNIDER-RESUME<br/>
+      ✕ LOCATION · BOSTON, MA
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>© 2026 JUSTIN SNIDER. POST.HTML</span>
+    <span>BUILT WITH CLAUDE CODE IN 3 MINUTES.</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const el = document.getElementById('bos-meta');
+  if (!el) return;
+  const WCODE = {
+    0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+    45: '🌫️', 48: '🌫️',
+    51: '🌦️', 53: '🌦️', 55: '🌦️', 56: '🌦️', 57: '🌦️',
+    61: '🌧️', 63: '🌧️', 65: '🌧️', 66: '🌧️', 67: '🌧️',
+    71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️',
+    80: '🌧️', 81: '🌧️', 82: '🌧️',
+    85: '🌨️', 86: '🌨️',
+    95: '⛈️', 96: '⛈️', 99: '⛈️'
+  };
+  let weather = '';
+  function fmtTime() {
+    return new Date().toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+  function render() {
+    el.textContent = `BOS · ${fmtTime()}${weather ? ' · ' + weather : ''}`;
+  }
+  async function fetchWeather() {
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=42.36&longitude=-71.06&current=temperature_2m,weather_code&temperature_unit=fahrenheit');
+      const d = await r.json();
+      const t = Math.round(d.current.temperature_2m);
+      const e = WCODE[d.current.weather_code] || '';
+      weather = `${e} ${t}°F`;
+    } catch (err) {
+      weather = '';
+    }
+    render();
+  }
+  render();
+  fetchWeather();
+  setInterval(render, 30000);
+  setInterval(fetchWeather, 600000);
+})();
+</script>
+
+<script>
+(function () {
+  // Reading progress
+  var bar = document.getElementById('progress');
+  var article = document.getElementById('article');
+  function tick() {
+    if (!article || !bar) return;
+    var rect = article.getBoundingClientRect();
+    var total = article.offsetHeight - window.innerHeight;
+    var scrolled = -rect.top;
+    var pct = Math.max(0, Math.min(1, scrolled / Math.max(1, total)));
+    bar.style.width = (pct * 100) + '%';
+  }
+  document.addEventListener('scroll', tick, { passive: true });
+  window.addEventListener('resize', tick);
+  tick();
+
+  // TOC active state
+  var tocLinks = document.querySelectorAll('.toc a');
+  var headings = Array.from(document.querySelectorAll('article h2[id]'));
+  function highlight() {
+    var y = window.scrollY + 120;
+    var current = null;
+    headings.forEach(function (h) {
+      if (h.offsetTop <= y) current = h.id;
+    });
+    tocLinks.forEach(function (a) {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }
+  document.addEventListener('scroll', highlight, { passive: true });
+  highlight();
+})();
+</script>
+
+</body>
+</html>

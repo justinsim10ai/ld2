@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Writing — weregoingplaces.xyz</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --paper: #f1f1ec;
+    --ink: #0e0e10;
+    --ink-soft: #2a2a2e;
+    --muted: #6b6b70;
+    --pastel-mint:    #c9e4d4;
+    --pastel-lavender:#d9d2ee;
+    --pastel-peach:   #f5d6c6;
+    --pastel-sky:     #cfe0ee;
+    --pastel-butter:  #efe7c7;
+    --pastel-rose:    #ecd2d8;
+    --accent-green:   #2ec27e;
+    --accent-blue:    #3aa0ff;
+    --hairline: 1.5px;
+    --content-max: 1280px;
+    --gutter: 32px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--ink); color: var(--paper); }
+  a { color: inherit; text-decoration: none; }
+
+  /* Topbar — same as post */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--paper);
+    border-bottom: var(--hairline) solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .topbar > div { padding: 12px 20px; }
+  .topbar .left { border-right: var(--hairline) solid var(--ink); }
+  .topbar .right {
+    border-left: var(--hairline) solid var(--ink);
+    display: flex; align-items: center; gap: 16px;
+  }
+  .topbar a:hover { background: var(--ink); color: var(--paper); }
+  .topbar .back { display: inline-flex; align-items: center; gap: 8px; }
+  .topbar .back .arrow { transition: transform 0.2s ease; display: inline-block; }
+  .topbar .back:hover .arrow { transform: translateX(-3px); }
+  .topbar .blink { display: inline-flex; align-items: center; gap: 8px; }
+  .topbar .blink::after {
+    content: "";
+    display: inline-block;
+    width: 9px; height: 9px;
+    background: var(--accent-green);
+    box-shadow: 0 0 0 2px rgba(46,194,126,0.18);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { background: var(--accent-green); box-shadow: 0 0 0 2px rgba(46,194,126,0.18); }
+    50%      { background: var(--accent-blue);  box-shadow: 0 0 0 4px rgba(58,160,255,0.22); }
+  }
+
+  /* Hero */
+  .hero {
+    border-bottom: var(--hairline) solid var(--ink);
+    padding: 80px var(--gutter) 48px;
+    background:
+      radial-gradient(ellipse at 90% 10%, var(--pastel-butter) 0%, transparent 55%),
+      radial-gradient(ellipse at 10% 90%, var(--pastel-mint) 0%, transparent 50%),
+      var(--paper);
+  }
+  .hero-inner { max-width: var(--content-max); margin: 0 auto; }
+  .crumb {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    display: flex; gap: 12px; align-items: center;
+    margin-bottom: 28px;
+  }
+  .crumb::before {
+    content: ""; width: 36px; height: var(--hairline); background: var(--ink);
+  }
+  .crumb .sep { opacity: 0.4; }
+  .crumb a:hover { background: var(--ink); color: var(--paper); padding: 0 4px; }
+
+  .hero h1 {
+    font-family: "Instrument Serif", "Times New Roman", serif;
+    font-weight: 400;
+    font-size: clamp(64px, 11vw, 180px);
+    line-height: 0.88;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .hero h1 .ital { font-style: italic; }
+
+  .hero-deck {
+    margin: 24px 0 0;
+    max-width: 60ch;
+    font-family: "Instrument Serif", serif;
+    font-size: clamp(18px, 1.8vw, 22px);
+    line-height: 1.45;
+    color: var(--ink-soft);
+    text-wrap: pretty;
+  }
+  .hero-deck .ital { font-style: italic; }
+
+  .hero-band {
+    margin-top: 40px;
+    border-top: var(--hairline) solid var(--ink);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .hero-band > div {
+    padding: 18px 20px 0 0;
+    border-right: var(--hairline) solid var(--ink);
+  }
+  .hero-band > div:last-child { border-right: 0; padding-right: 0; }
+  .hero-band > div:nth-child(n+2) { padding-left: 20px; }
+  .hero-band .key {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .hero-band .val {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+
+  /* Post list */
+  .posts {
+    max-width: var(--content-max);
+    margin: 0 auto;
+  }
+  .post-row {
+    display: grid;
+    grid-template-columns: 80px 140px 1fr 140px;
+    gap: 24px;
+    padding: 32px var(--gutter);
+    border-bottom: var(--hairline) solid var(--ink);
+    align-items: start;
+    transition: background 0.15s ease, color 0.15s ease;
+    cursor: pointer;
+  }
+  .post-row:hover { background: var(--ink); color: var(--paper); }
+  .post-row .num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    padding-top: 4px;
+  }
+  .post-row:hover .num { color: rgba(241,241,236,0.6); }
+  .post-row .when {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    padding-top: 4px;
+  }
+  .post-row:hover .when { color: var(--paper); }
+  .post-row .body h2 {
+    font-family: "Instrument Serif", serif;
+    font-weight: 400;
+    font-size: clamp(28px, 3.4vw, 48px);
+    line-height: 1.02;
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+    text-wrap: balance;
+  }
+  .post-row .body h2 .ital { font-style: italic; }
+  .post-row .body .deck {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0 0 14px;
+  }
+  .post-row:hover .body .deck { color: rgba(241,241,236,0.85); }
+  .post-row .body .tag {
+    display: inline-block;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 4px 8px;
+  }
+  .post-row:hover .body .tag { background: var(--paper); color: var(--ink); }
+  .post-row .read {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-align: right;
+    padding-top: 8px;
+  }
+  .post-row .read .arrow {
+    display: inline-block;
+    margin-left: 6px;
+    transition: transform 0.2s ease;
+  }
+  .post-row:hover .read .arrow { transform: translate(2px, -2px); }
+
+  /* Footer */
+  footer {
+    background: linear-gradient(180deg, var(--pastel-butter) 0%, var(--paper) 100%);
+    border-top: var(--hairline) solid var(--ink);
+    padding: 56px var(--gutter) 32px;
+    margin-top: 48px;
+  }
+  .foot-inner {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: end;
+  }
+  .foot-mark {
+    font-family: "Instrument Serif", serif;
+    font-style: italic;
+    font-size: clamp(40px, 6vw, 96px);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+  }
+  .foot-mark .roman { font-style: normal; }
+  .foot-meta {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    text-align: right;
+    line-height: 2;
+    color: var(--ink-soft);
+  }
+  .foot-bottom {
+    max-width: var(--content-max);
+    margin: 40px auto 0;
+    padding-top: 16px;
+    border-top: var(--hairline) solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  @media (max-width: 860px) {
+    .hero-band { grid-template-columns: 1fr; }
+    .hero-band > div {
+      border-right: 0;
+      border-bottom: var(--hairline) solid var(--ink);
+      padding: 16px 0 !important;
+    }
+    .hero-band > div:last-child { border-bottom: 0; }
+    .post-row {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .post-row .num { display: none; }
+    .post-row .read { text-align: left; }
+    .foot-inner { grid-template-columns: 1fr; }
+    .foot-meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="left"><a href="/" class="back"><span class="arrow">←</span> JUSTIN ⁄ INDEX</a></div>
+  <div class="right">
+    <span>FILE 004 — WRITING.HTML</span>
+    <span id="bos-meta">BOS · -- · --</span>
+    <span class="blink">UPDATED MAY 2026</span>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="crumb">
+      <a href="/">JUSTIN</a>
+      <span class="sep">⁄</span>
+      <span>WRITING</span>
+    </div>
+
+    <h1>Writing<span class="ital">.</span></h1>
+
+    <p class="hero-deck">
+      Field reports from the SEO/AEO frontier — what breaks, what scales, and the unglamorous middle of shipping agentic content workflows. <span class="ital">Updated when I learn something new.</span>
+    </p>
+
+    <div class="hero-band">
+      <div>
+        <div class="key">— POSTS</div>
+        <div class="val">1 published</div>
+      </div>
+      <div>
+        <div class="key">— CADENCE</div>
+        <div class="val">Whenever it's ready</div>
+      </div>
+      <div>
+        <div class="key">— TOPICS</div>
+        <div class="val">SEO · AEO · agentic systems</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="posts">
+
+  <a class="post-row" href="/writing/retrieval-augmented-web">
+    <div class="num">⁄01</div>
+    <div class="when">May 7, 2026</div>
+    <div class="body">
+      <h2>The retrieval-augmented web is <span class="ital">already here.</span></h2>
+      <p class="deck">Notes from eighteen months on the SEO/AEO frontier — what breaks, what scales, and why the next decade of organic growth belongs to people who can think like a crawler and a model at the same time.</p>
+      <span class="tag">ESSAY · 12 MIN READ</span>
+    </div>
+    <div class="read">READ <span class="arrow">→</span></div>
+  </a>
+
+</section>
+
+<footer>
+  <div class="foot-inner">
+    <div class="foot-mark">— see <span class="roman">you</span> around.</div>
+    <div class="foot-meta">
+      ✕ INDEX · WEREGOINGPLACES.XYZ<br/>
+      ✕ RESUME · ⁄RESUME<br/>
+      ✕ LOCATION · BOSTON, MA
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>© 2026 JUSTIN SNIDER. WRITING.HTML</span>
+    <span>BUILT WITH CLAUDE CODE IN 3 MINUTES.</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const el = document.getElementById('bos-meta');
+  if (!el) return;
+  const WCODE = {
+    0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+    45: '🌫️', 48: '🌫️',
+    51: '🌦️', 53: '🌦️', 55: '🌦️', 56: '🌦️', 57: '🌦️',
+    61: '🌧️', 63: '🌧️', 65: '🌧️', 66: '🌧️', 67: '🌧️',
+    71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️',
+    80: '🌧️', 81: '🌧️', 82: '🌧️',
+    85: '🌨️', 86: '🌨️',
+    95: '⛈️', 96: '⛈️', 99: '⛈️'
+  };
+  let weather = '';
+  function fmtTime() {
+    return new Date().toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+  function render() {
+    el.textContent = `BOS · ${fmtTime()}${weather ? ' · ' + weather : ''}`;
+  }
+  async function fetchWeather() {
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=42.36&longitude=-71.06&current=temperature_2m,weather_code&temperature_unit=fahrenheit');
+      const d = await r.json();
+      const t = Math.round(d.current.temperature_2m);
+      const e = WCODE[d.current.weather_code] || '';
+      weather = `${e} ${t}°F`;
+    } catch (err) {
+      weather = '';
+    }
+    render();
+  }
+  render();
+  fetchWeather();
+  setInterval(render, 30000);
+  setInterval(fetchWeather, 600000);
+})();
+</script>
+
+</body>
+</html>

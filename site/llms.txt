@@ -1,0 +1,32 @@
+# Justin Snider — weregoingplaces.xyz
+
+> Personal site of Justin Snider, an SEO/AEO/ASO Lead based in Boston, MA. Sixteen years at the intersection of organic growth and generative search; currently leading SEO/AEO/ASO at OG.com (the prediction-market arm of Crypto.com). Previously: Crypto.com, Binance.US, Public.com, Finder.com, Victorious SEO, Credit Karma. Building agentic content workflows, MCP servers, and Knowledge Graph authority strategies for the retrieval-augmented web.
+
+## Primary pages
+
+- [Home](https://weregoingplaces.xyz/): Index of selected projects — Sim10.ai (founder), Profound (agentic workflows), Crypto.com MCP (product launch), Vibe Scraper (agentic tool, coming soon), Tiny Forecasts (calibration trainer, coming soon), Box Score Bot (sports recap prototype, coming soon).
+- [Resume](https://weregoingplaces.xyz/resume): Full curriculum vitae — experience, skills, education. Includes click-to-reveal contact info.
+- [Writing](https://weregoingplaces.xyz/writing/): Long-form essays and field reports on SEO, AEO, agentic systems, and the retrieval-augmented web.
+
+## Latest writing
+
+- [The retrieval-augmented web is already here](https://weregoingplaces.xyz/writing/retrieval-augmented-web): Field report from eighteen months on the SEO/AEO frontier. Covers what changed when AI assistants became a measurable traffic source, what AEO actually means in practice, the agentic content stack at scale (1,000 pieces/quarter across 24 markets), three things that worked, three things that didn't, and what to do tomorrow.
+
+## Areas of expertise
+
+- SEO (technical, international, local)
+- Answer Engine Optimization (AEO) and Generative Engine Optimization (GEO)
+- LLM search optimization, citation seeding, semantic density
+- Entity SEO, Knowledge Graph authority, schema.org / structured data
+- Model Context Protocol (MCP) — shipped the first crypto MCP at Crypto.com
+- Agentic content workflows (Profound, AirOps, Claude Code)
+- App Store Optimization (ASO)
+- Vector-based search and RAG-readiness auditing
+
+## Contact
+
+Email and phone are click-to-reveal on the resume page (anti-scrape). Public profiles are linked from every page.
+
+- LinkedIn: https://www.linkedin.com/in/justinsnider
+- GitHub: https://github.com/justinSim10ai
+- Threads: https://www.threads.net/@jstnjsph
