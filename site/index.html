@@ -264,8 +264,9 @@
     cursor: pointer;
     isolation: isolate;
   }
-  .card.full    { aspect-ratio: 21 / 5; }
-  .card.square  { aspect-ratio: 4 / 3; }
+  .row.one   .card { aspect-ratio: 21 / 5; }
+  .row.two   .card { aspect-ratio: 21 / 10; }
+  .row.three .card { aspect-ratio: 7 / 5; }
 
   .card-bg {
     position: absolute;
@@ -572,7 +573,7 @@
 
         <!-- Row 1 — one (full) -->
         <div class="row one">
-          <a class="card full" href="https://sim10.ai" target="_blank" rel="noopener noreferrer" style="--card-color: var(--pastel-sky)">
+          <a class="card" href="https://sim10.ai" target="_blank" rel="noopener noreferrer" style="--card-color: var(--pastel-sky)">
             <div class="card-bg"></div>
             <div class="card-tag">FOUNDER · 2024 →</div>
             <div class="card-num">⁄01</div>
@@ -587,7 +588,7 @@
 
         <!-- Row 2 — two -->
         <div class="row two">
-          <article class="card square" style="--card-color: var(--pastel-lavender)">
+          <article class="card" style="--card-color: var(--pastel-lavender)">
             <div class="card-bg"></div>
             <div class="card-tag">AGENTIC WORKFLOWS</div>
             <div class="card-num">⁄02</div>
@@ -598,7 +599,7 @@
               <span class="cta">READ THE WRITE-UP →</span>
             </div>
           </article>
-          <a class="card square" href="https://mcp.crypto.com" target="_blank" rel="noopener noreferrer" style="--card-color: var(--pastel-mint)">
+          <a class="card" href="https://mcp.crypto.com" target="_blank" rel="noopener noreferrer" style="--card-color: var(--pastel-mint)">
             <div class="card-bg"></div>
             <div class="card-tag">PRODUCT · LAUNCH</div>
             <div class="card-num">⁄03</div>
@@ -613,7 +614,7 @@
 
         <!-- Row 3 — one (full) -->
         <div class="row one">
-          <article class="card full" style="--card-color: var(--pastel-peach)">
+          <article class="card" style="--card-color: var(--pastel-peach)">
             <div class="card-bg"></div>
             <div class="card-tag">TOOL · OPEN SOURCE</div>
             <div class="card-num">⁄04</div>
@@ -629,7 +630,7 @@
 
         <!-- Row 4 — three -->
         <div class="row three">
-          <article class="card square" style="--card-color: var(--pastel-rose)">
+          <article class="card" style="--card-color: var(--pastel-rose)">
             <div class="card-bg"></div>
             <div class="card-tag">EXPERIMENT</div>
             <div class="card-num">⁄05</div>
@@ -641,7 +642,7 @@
               <span class="cta">TRY IT →</span>
             </div>
           </article>
-          <article class="card square" style="--card-color: var(--pastel-butter)">
+          <article class="card" style="--card-color: var(--pastel-butter)">
             <div class="card-bg"></div>
             <div class="card-tag">PROTOTYPE</div>
             <div class="card-num">⁄06</div>
@@ -653,7 +654,7 @@
               <span class="cta">SEE EXAMPLES →</span>
             </div>
           </article>
-          <article class="card square" style="--card-color: var(--pastel-lavender)">
+          <article class="card" style="--card-color: var(--pastel-lavender)">
             <div class="card-bg"></div>
             <div class="card-tag">TBD</div>
             <div class="card-num">⁄07</div>
