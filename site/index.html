@@ -245,9 +245,16 @@
   }
   .row.one { grid-template-columns: 1fr; }
   .row.two { grid-template-columns: 1fr 1fr; }
-  .row.two > * + * {
+  .row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .row.two > * + *,
+  .row.three > * + * {
     border-left: var(--hairline) solid var(--ink);
   }
+  /* 3-up cards are smaller — scale the overlay typography down so it fits */
+  .row.three .card-overlay { padding: 36px 24px; }
+  .row.three .card-overlay h3 { font-size: clamp(28px, 3vw, 56px); }
+  .row.three .card-overlay p { font-size: 11px; max-width: 36ch; margin-top: 14px; }
+  .row.three .card-overlay .cta { font-size: 10px; }
 
   .card {
     display: block;
@@ -469,8 +476,10 @@
   /* responsive */
   @media (max-width: 720px) {
     :root { --gutter: 16px; }
-    .row.two { grid-template-columns: 1fr; }
-    .row.two > * + * {
+    .row.two,
+    .row.three { grid-template-columns: 1fr; }
+    .row.two > * + *,
+    .row.three > * + * {
       border-left: 0;
       border-top: var(--hairline) solid var(--ink);
     }
@@ -602,8 +611,8 @@
           </article>
         </div>
 
-        <!-- Row 4 — two -->
-        <div class="row two">
+        <!-- Row 4 — three -->
+        <div class="row three">
           <article class="card square" style="--card-color: var(--pastel-butter)">
             <div class="card-bg"></div>
             <div class="card-tag">ESSAY</div>
@@ -626,11 +635,7 @@
               <span class="cta">TRY IT →</span>
             </div>
           </article>
-        </div>
-
-        <!-- Row 5 — one (tall) -->
-        <div class="row one">
-          <article class="card tall" style="--card-color: var(--pastel-sky)">
+          <article class="card square" style="--card-color: var(--pastel-sky)">
             <div class="card-bg"></div>
             <div class="card-tag">TALK</div>
             <div class="card-num">⁄07</div>
@@ -643,8 +648,8 @@
           </article>
         </div>
 
-        <!-- Row 6 — two -->
-        <div class="row two">
+        <!-- Row 5 — three -->
+        <div class="row three">
           <article class="card square" style="--card-color: var(--pastel-peach)">
             <div class="card-bg"></div>
             <div class="card-tag">PROTOTYPE</div>
@@ -667,11 +672,7 @@
               <span class="cta">ENTER THE ARCHIVE →</span>
             </div>
           </article>
-        </div>
-
-        <!-- Row 7 — one (tall) -->
-        <div class="row one">
-          <article class="card tall" style="--card-color: var(--pastel-mint)">
+          <article class="card square" style="--card-color: var(--pastel-mint)">
             <div class="card-bg"></div>
             <div class="card-tag">PHOTO</div>
             <div class="card-num">⁄10</div>
@@ -684,7 +685,7 @@
           </article>
         </div>
 
-        <!-- Row 8 — two -->
+        <!-- Row 6 — two -->
         <div class="row two">
           <article class="card square" style="--card-color: var(--pastel-butter)">
             <div class="card-bg"></div>
