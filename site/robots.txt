@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 
+Sitemap: https://weregoingplaces.xyz/sitemap-index.xml
 Sitemap: https://weregoingplaces.xyz/sitemap.xml
