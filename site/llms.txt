@@ -4,7 +4,7 @@
 
 ## Primary pages
 
-- [Home](https://weregoingplaces.xyz/): Index of selected projects — Sim10.ai (founder), Profound (agentic workflows), Crypto.com MCP (product launch), Vibe Scraper (agentic tool, coming soon), Tiny Forecasts (calibration trainer, coming soon), Box Score Bot (sports recap prototype, coming soon), SEO Recon (pre-interview SEO investigation tool, coming soon).
+- [Home](https://weregoingplaces.xyz/): Index of selected projects — Sim10.ai (founder), Profound (agentic workflows), Crypto.com MCP (product launch), Vibe Scraper (agentic tool, coming soon), Tiny Forecasts (calibration trainer, coming soon), Box Score Bot (sports recap prototype, coming soon), SEO Recon (pre-interview SEO investigation tool, demo at https://recon.weregoingplaces.xyz).
 - [Resume](https://weregoingplaces.xyz/resume): Full curriculum vitae — experience, skills, education. Includes click-to-reveal contact info.
 - [Writing](https://weregoingplaces.xyz/writing/): Long-form essays and field reports on SEO, AEO, agentic systems, and the retrieval-augmented web.
 
