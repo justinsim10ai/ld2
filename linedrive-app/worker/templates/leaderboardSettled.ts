@@ -2,39 +2,31 @@ import type { Category, Pick } from "../types";
 import { h } from "./h";
 import { COLORS, CATEGORY_ACCENT, FONT_DISPLAY, FONT_SANS } from "./theme";
 
-function scoreLegend(category: Category): string {
-  if (category === "k") return "Score = expected strikeouts. Higher = more K's.";
-  if (category === "outs") return "Score = expected outs recorded. Higher = longer outing.";
-  if (category === "game") return "Score = expected total runs. Higher = more scoring.";
-  return "Score = z-score composite (0 = league average, +1 ≈ one stdev above).";
-}
-
-export interface LeaderboardProps {
+export interface LeaderboardSettledProps {
   category: Category;
   title: string;
   picks: Pick[];
   dateLabel: string;
   logoDataUrl: string | null;
-  oddsMode?: "pct" | "american";
-}
-
-function ogColumnLabel(p: Pick, mode: "pct" | "american"): string {
-  if (!p.marketLine) return "—";
-  // Game total picks store "O/U 8.5" — no toggle applies.
-  if (!p.marketLine.includes("/") || p.marketLine.startsWith("O/U")) return p.marketLine;
-  if (mode === "american" && p.marketOddsAmerican !== null && p.marketOddsAmerican !== undefined) {
-    return p.marketOddsAmerican > 0 ? `+${p.marketOddsAmerican}` : String(p.marketOddsAmerican);
-  }
-  return p.marketLine.split(" / ")[0];
 }
 
 const WIDTH = 1080;
 const HEIGHT = 1350;
 
-export function leaderboardNode(props: LeaderboardProps) {
+const WIN_COLOR = "#7AE3B8";
+const MISS_COLOR = "#F4A0A0";
+const DNP_COLOR = "rgba(182, 209, 230, 0.55)";
+
+export function leaderboardSettledNode(props: LeaderboardSettledProps) {
   const accent = CATEGORY_ACCENT[props.category];
   const rows = props.picks.slice(0, 10);
-  const mode = props.oddsMode ?? "pct";
+
+  // Roll up the slate's hit count for the subtitle.
+  const settledRows = rows.filter((p) => p.result?.finalized);
+  const wins = settledRows.filter((p) => p.result?.hit).length;
+  const total = rows.length;
+  const sumPayout = rows.reduce((acc, p) => acc + (p.result?.payoutDollars ?? 0), 0);
+  const payoutLabel = formatSignedMoney(sumPayout);
 
   return h(
     "div",
@@ -79,7 +71,7 @@ export function leaderboardNode(props: LeaderboardProps) {
           h(
             "div",
             { style: { display: "flex", fontFamily: FONT_SANS, fontSize: 18, color: COLORS.muted, letterSpacing: 3, marginTop: 6 } },
-            "FIND YOUR EDGE",
+            "SETTLED",
           ),
         ),
       ),
@@ -125,31 +117,32 @@ export function leaderboardNode(props: LeaderboardProps) {
         props.title.toUpperCase(),
       ),
     ),
+    // Slate summary line: "X / 10 hit · $10 wagered each → ±$YY"
     h(
       "div",
       { style: { display: "flex", flexDirection: "column", marginBottom: 14 } },
       h(
         "div",
         { style: { display: "flex", fontSize: 20, color: COLORS.subtle, letterSpacing: 1, fontWeight: 700 } },
-        `TOP ${rows.length} RANKED BY MODEL SCORE`,
+        `TOP ${total} · ${wins} / ${total} HIT · $10 EACH → ${payoutLabel}`,
       ),
       h(
         "div",
         { style: { display: "flex", fontSize: 15, color: COLORS.muted, marginTop: 3 } },
-        scoreLegend(props.category),
+        "Results vs. OG odds. Win pays per American odds; loss is −$10.",
       ),
     ),
     h(
       "div",
       { style: { display: "flex", flexDirection: "column" } },
-      rows.map((p, i) => leaderboardRow(p, i, accent.rankColor, mode)),
+      rows.map((p, i) => leaderboardSettledRow(p, i, accent.rankColor)),
     ),
     h(
       "div",
       {
         style: {
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           alignItems: "center",
           marginTop: "auto",
           paddingTop: 18,
@@ -159,12 +152,20 @@ export function leaderboardNode(props: LeaderboardProps) {
           fontWeight: 700,
         },
       },
-      h("div", { style: { display: "flex" } }, "FIND YOUR EDGE"),
+      h("div", { style: { display: "flex" } }, `SETTLED · ${props.dateLabel}`),
+      h("div", { style: { display: "flex", color: COLORS.muted, fontWeight: 400 } }, "linedrive.weregoingplaces.xyz"),
     ),
   );
 }
 
-function leaderboardRow(p: Pick, i: number, accentColor: string, mode: "pct" | "american") {
+function leaderboardSettledRow(p: Pick, i: number, accentColor: string) {
+  const r = p.result;
+  const outcome = !r || !r.hadGame ? "dnp" : r.hit ? "win" : "miss";
+  const statColor = outcome === "win" ? WIN_COLOR : outcome === "miss" ? MISS_COLOR : DNP_COLOR;
+  const payoutLabel = outcome === "dnp"
+    ? "—"
+    : formatSignedMoney(r?.payoutDollars ?? 0);
+
   return h(
     "div",
     {
@@ -211,11 +212,11 @@ function leaderboardRow(p: Pick, i: number, accentColor: string, mode: "pct" | "
       ),
       h(
         "div",
-        { style: { fontSize: 16, color: COLORS.subtle, marginTop: 3, display: "flex" } },
-        p.signals[0] ?? "",
+        { style: { fontSize: 16, color: COLORS.muted, marginTop: 3, display: "flex" } },
+        americanLabel(p.marketOddsAmerican),
       ),
     ),
-    // Score column (model)
+    // Result stat column
     h(
       "div",
       {
@@ -231,7 +232,7 @@ function leaderboardRow(p: Pick, i: number, accentColor: string, mode: "pct" | "
       h(
         "div",
         { style: { display: "flex", fontSize: 12, color: COLORS.muted, letterSpacing: 1 } },
-        "SCORE",
+        "RESULT",
       ),
       h(
         "div",
@@ -241,14 +242,14 @@ function leaderboardRow(p: Pick, i: number, accentColor: string, mode: "pct" | "
             fontFamily: "FunnelDisplay",
             fontSize: 26,
             fontWeight: 800,
-            color: COLORS.sunset,
+            color: statColor,
             marginTop: 2,
           },
         },
-        p.scoreLabel,
+        r?.display ?? "—",
       ),
     ),
-    // OG market column
+    // $10 payout column
     h(
       "div",
       {
@@ -265,7 +266,7 @@ function leaderboardRow(p: Pick, i: number, accentColor: string, mode: "pct" | "
       h(
         "div",
         { style: { display: "flex", fontSize: 12, color: COLORS.muted, letterSpacing: 1 } },
-        mode === "american" ? "OG ODDS" : "OG",
+        "$10 BET",
       ),
       h(
         "div",
@@ -275,12 +276,24 @@ function leaderboardRow(p: Pick, i: number, accentColor: string, mode: "pct" | "
             fontFamily: "FunnelDisplay",
             fontSize: 26,
             fontWeight: 800,
-            color: p.marketLine ? COLORS.flame : COLORS.muted,
+            color: statColor,
             marginTop: 2,
           },
         },
-        ogColumnLabel(p, mode),
+        payoutLabel,
       ),
     ),
   );
+}
+
+function americanLabel(odds: number | null): string {
+  if (odds === null || odds === undefined) return "no OG market";
+  return `OG ${odds > 0 ? `+${odds}` : odds}`;
+}
+
+function formatSignedMoney(v: number): string {
+  if (v === 0) return "$0";
+  const abs = Math.abs(v);
+  const body = Number.isInteger(abs) ? String(abs) : abs.toFixed(2);
+  return v > 0 ? `+$${body}` : `−$${body}`;
 }

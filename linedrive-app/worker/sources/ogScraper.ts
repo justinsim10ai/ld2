@@ -54,6 +54,8 @@ export interface GameHint {
   gamePk: number;
   awayTeamId: number;
   homeTeamId: number;
+  awayTeamAbbrev?: string;
+  homeTeamAbbrev?: string;
 }
 
 export function americanToImplied(odds: number): number {
@@ -339,6 +341,7 @@ import type { Category } from "../types";
 export interface MarketLine {
   impliedPct: number;
   americanOdds: number;
+  line: number | null;   // over/under threshold (1.5 TB, 5.5 K); null for binary markets (HR/Hit)
 }
 
 export class PreloadedMarketLookup {
@@ -388,5 +391,11 @@ function marketYesLine(p: PlayerMarkets, category: Category): MarketLine | null 
     category === "k"    ? p.k?.yesOdds :
     null;
   if (odds === undefined || odds === null) return null;
-  return { impliedPct: americanToImplied(odds), americanOdds: odds };
+  const line =
+    category === "tb"   ? p.tb?.line ?? null :
+    category === "rbi"  ? p.rbi?.line ?? null :
+    category === "outs" ? p.outs?.line ?? null :
+    category === "k"    ? p.k?.line ?? null :
+    null;
+  return { impliedPct: americanToImplied(odds), americanOdds: odds, line };
 }

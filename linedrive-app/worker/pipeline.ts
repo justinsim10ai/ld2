@@ -229,7 +229,13 @@ export async function runDailyPipeline(
   const market = await buildMarketLookup(
     env,
     dateIso,
-    games.map((g) => ({ gamePk: g.gamePk, awayTeamId: g.awayTeam.id, homeTeamId: g.homeTeam.id })),
+    games.map((g) => ({
+      gamePk: g.gamePk,
+      awayTeamId: g.awayTeam.id,
+      homeTeamId: g.homeTeam.id,
+      awayTeamAbbrev: g.awayTeam.abbreviation,
+      homeTeamAbbrev: g.homeTeam.abbreviation,
+    })),
     playerNameById,
     playerToGamePk,
   );
@@ -256,6 +262,8 @@ export async function runDailyPipeline(
     if (m) {
       p.marketPct = m.impliedOverPct;
       p.marketLine = `O/U ${m.line}`;
+      p.marketOverLine = m.line;
+      p.marketOddsAmerican = m.overOdds ?? null;
     }
   }
 
@@ -267,16 +275,16 @@ export async function runDailyPipeline(
     tb: tbPicks, rbi: rbiPicks, outs: outsPicks,
     game: gamePicks,
   };
-  const leaderboard = await renderLeaderboards(env, dateIso, allPicksByCategory);
+  const { leaderboard, leaderboardAmerican } = await renderLeaderboards(env, dateIso, allPicksByCategory);
 
   const categories: Record<Category, CategoryBlock> = {
-    hr:   buildBlock("hr",   hrPicks,   leaderboard.hr,   []),
-    hit:  buildBlock("hit",  hitPicks,  leaderboard.hit,  []),
-    k:    buildBlock("k",    kPicks,    leaderboard.k,    []),
-    tb:   buildBlock("tb",   tbPicks,   leaderboard.tb,   []),
-    rbi:  buildBlock("rbi",  rbiPicks,  leaderboard.rbi,  []),
-    outs: buildBlock("outs", outsPicks, leaderboard.outs, []),
-    game: buildBlock("game", gamePicks, leaderboard.game, []),
+    hr:   buildBlock("hr",   hrPicks,   leaderboard.hr,   leaderboardAmerican.hr,   []),
+    hit:  buildBlock("hit",  hitPicks,  leaderboard.hit,  leaderboardAmerican.hit,  []),
+    k:    buildBlock("k",    kPicks,    leaderboard.k,    leaderboardAmerican.k,    []),
+    tb:   buildBlock("tb",   tbPicks,   leaderboard.tb,   leaderboardAmerican.tb,   []),
+    rbi:  buildBlock("rbi",  rbiPicks,  leaderboard.rbi,  leaderboardAmerican.rbi,  []),
+    outs: buildBlock("outs", outsPicks, leaderboard.outs, leaderboardAmerican.outs, []),
+    game: buildBlock("game", gamePicks, leaderboard.game, "",                       []),
   };
 
   const gameSummaries: GameSummary[] = games.map((g) => {
@@ -422,12 +430,13 @@ export async function readArchiveIndex(env: Env, league: League): Promise<string
   try { return JSON.parse(raw) as string[]; } catch { return []; }
 }
 
-function buildBlock(category: Category, picks: Pick[], leaderboard: string | undefined, highlights: string[] | undefined): CategoryBlock {
+function buildBlock(category: Category, picks: Pick[], leaderboard: string | undefined, leaderboardAmerican: string | undefined, highlights: string[] | undefined): CategoryBlock {
   return {
     category,
     title: CATEGORY_TITLES[category],
     picks,
     leaderboardImage: leaderboard ?? "",
+    leaderboardImageAmerican: leaderboardAmerican || undefined,
     highlightImages: (highlights ?? []).slice(0, HIGHLIGHT_COUNT),
   };
 }
@@ -534,7 +543,7 @@ function annotateMarket(
   category: Category,
   market: {
     get(playerId: number, category: Category): number | null;
-    getLine(playerId: number, category: Category): { impliedPct: number; americanOdds: number } | null;
+    getLine(playerId: number, category: Category): { impliedPct: number; americanOdds: number; line: number | null } | null;
   },
 ) {
   for (const p of picks) {
@@ -543,6 +552,7 @@ function annotateMarket(
       if (line) {
         p.marketPct = line.impliedPct;
         p.marketOddsAmerican = line.americanOdds;
+        p.marketOverLine = line.line;
         const pct = Math.round(line.impliedPct * 100);
         const odds = line.americanOdds > 0 ? `+${line.americanOdds}` : String(line.americanOdds);
         p.marketLine = `${pct}% / ${odds}`;
@@ -550,11 +560,13 @@ function annotateMarket(
         p.marketPct = null;
         p.marketOddsAmerican = null;
         p.marketLine = null;
+        p.marketOverLine = null;
       }
     } catch {
       p.marketPct = null;
       p.marketOddsAmerican = null;
       p.marketLine = null;
+      p.marketOverLine = null;
     }
   }
 }

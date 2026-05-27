@@ -16,11 +16,17 @@ not_found_handling = "single-page-application"
 # Daily MLB crawls. We split today + day+1 + day+2 into three separate cron firings
 # (5 minutes apart) so each gets its own 128MB Worker memory budget — running all three
 # in one invocation overflows the limit when the OG.com scraper is active.
-#  - 15:00 UTC (11am ET DST): today's slate, full render, scraper on
+#  - 11:00 UTC (7am ET DST): settlement phase A — fetch yesterday's MLB gameLog results, decorate picks
+#  - 11:02 UTC: settlement phase B — render 24 settled highlight PNGs for yesterday
+#  - 15:00 UTC: today's slate, full render, scraper on
 #  - 15:05 UTC: tomorrow's slate, leaderboards only, scraper off
 #  - 15:10 UTC: day-after slate, leaderboards only, scraper off
+# Cron is UTC and does not follow DST; 11:00 UTC = 7am EDT during the season,
+# 6am EST in winter (no games then anyway).
 [triggers]
 crons = [
+  "0 11 * * *",   # yesterday settlement phase A (fetch + decorate)
+  "2 11 * * *",   # yesterday settlement phase B (render settled PNGs)
   "0 15 * * *",   # today phase A (data + leaderboards)
   "2 15 * * *",   # today phase B (24 highlight PNGs)
   "5 15 * * *",   # day+1 phase A (leaderboards only)

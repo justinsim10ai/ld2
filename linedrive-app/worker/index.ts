@@ -1,5 +1,6 @@
 import type { Env, DailyPayload, League } from "./types";
 import { runDailyPipeline, runHighlightPhase, readArchiveIndex } from "./pipeline";
+import { settlePayload, renderAndPersistSettled, runSettlementPhase } from "./settlement";
 
 const LEAGUES: League[] = ["mlb"];
 
@@ -40,6 +41,9 @@ export default {
     if (p === "/admin/render-highlights") {
       return handleRenderHighlights(request, env);
     }
+    if (p === "/admin/settle") {
+      return handleSettle(request, env);
+    }
 
     // /r/mlb-2026-05-26 → serve SPA shell; SPA reads the slug
     if (p.startsWith("/r/")) {
@@ -51,7 +55,36 @@ export default {
 
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     // Each cron firing is a fresh Worker invocation with its own 30s CPU budget.
-    // Four schedules dispatch: today phase A, today phase B, day+1, day+2.
+    // Six schedules dispatch:
+    //   11:00 yesterday settlement A (fetch), 11:02 settlement B (render),
+    //   15:00 today A, 15:02 today B, 15:05 day+1 A, 15:10 day+2 A.
+    if (event.cron === "0 11 * * *") {
+      const yesterday = isoFromOffset(-1);
+      ctx.waitUntil(
+        settlePayload(env, yesterday).then(
+          (r) => console.log(`[scheduled] ${yesterday} settlement A done: ${r.outcome.picksUpdated} picks`),
+          (err) => console.error(`[scheduled] ${yesterday} settlement A failed`, err),
+        ),
+      );
+      return;
+    }
+    if (event.cron === "2 11 * * *") {
+      const yesterday = isoFromOffset(-1);
+      ctx.waitUntil(
+        (async () => {
+          const archiveKey = `r:mlb:${yesterday}`;
+          const raw = await env.LINEDRIVE_KV.get(archiveKey);
+          if (!raw) {
+            console.warn(`[scheduled] ${yesterday} settlement B: no payload`);
+            return;
+          }
+          const payload = JSON.parse(raw) as DailyPayload;
+          const r = await renderAndPersistSettled(env, payload);
+          console.log(`[scheduled] ${yesterday} settlement B done: ${r.rendered} settled PNGs`);
+        })().catch((err) => console.error(`[scheduled] ${yesterday} settlement B failed`, err)),
+      );
+      return;
+    }
     if (event.cron === "2 15 * * *") {
       ctx.waitUntil(
         runHighlightPhase(env, isoFromOffset(0)).then(
@@ -178,6 +211,32 @@ async function handleAdminRun(request: Request, env: Env, ctx: ExecutionContext)
     });
   } catch (err) {
     console.error(`[admin] failed`, err);
+    return jsonResponse({ status: "error", error: String(err) }, 500);
+  }
+}
+
+async function handleSettle(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const provided = url.searchParams.get("key") ?? "";
+  if (!env.ADMIN_KEY || provided !== env.ADMIN_KEY) {
+    return new Response("forbidden", { status: 403 });
+  }
+  const date = url.searchParams.get("date") ?? isoFromOffset(-1);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return jsonResponse({ error: "bad date" }, 400);
+  }
+  // Combined settle + render path; useful for backfills.
+  try {
+    const result = await runSettlementPhase(env, date);
+    return jsonResponse({
+      status: "done",
+      date,
+      picksUpdated: result.outcome.picksUpdated,
+      rendered: result.rendered,
+      byCategory: result.outcome.byCategory,
+    });
+  } catch (err) {
+    console.error("[settle] failed", err);
     return jsonResponse({ status: "error", error: String(err) }, 500);
   }
 }

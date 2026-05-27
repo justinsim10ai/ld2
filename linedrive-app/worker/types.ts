@@ -102,6 +102,15 @@ export type Category = "hr" | "hit" | "k" | "tb" | "rbi" | "outs" | "game";
 
 export type PlayerCategory = "hr" | "hit" | "k" | "tb" | "rbi" | "outs";
 
+export interface PickResult {
+  hadGame: boolean;       // false = postponed, scratched, or no row found
+  finalized: boolean;     // game is final + stats settled
+  statValue: number;      // actual: HR count, hits, TB, RBI, K, outs recorded
+  hit: boolean;           // pick won — category threshold cleared
+  display: string;        // "1 HR", "0 HR", "2 H", "6 K", "18 outs", "—"
+  payoutDollars: number | null; // $10 stake profit (positive for win, -10 for loss, null if no odds)
+}
+
 export interface Pick {
   rank: number;
   playerId: number;
@@ -114,8 +123,10 @@ export interface Pick {
   marketPct: number | null;          // OG implied probability, 0..1
   marketOddsAmerican: number | null; // Yes-side American odds (-110, +260, ...)
   marketLine: string | null;         // Pre-formatted "15% / +566" label for card display
+  marketOverLine: number | null;     // OG over/under threshold value (e.g. 1.5 TB, 5.5 K). null for binary (HR/Hit)
   lineupProjected: boolean;
   weatherSummary: string | null;
+  result?: PickResult;
 }
 
 export interface CategoryBlock {
@@ -123,7 +134,10 @@ export interface CategoryBlock {
   title: string;
   picks: Pick[];
   leaderboardImage: string;
+  leaderboardImageAmerican?: string;   // alternate render with American odds (player props only)
+  leaderboardSettledImage?: string;
   highlightImages: string[];
+  highlightSettledImages?: string[];
 }
 
 export type League = "mlb";
@@ -160,4 +174,5 @@ export interface Env {
   LINEDRIVE_ASSETS: R2Bucket;
   ASSETS: Fetcher;
   ADMIN_KEY: string;
+  OG_API_KEY: string;
 }

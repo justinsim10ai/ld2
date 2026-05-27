@@ -1,7 +1,10 @@
 import type { Pick, Category, Env } from "./types";
 import type { RenderScope } from "./pipeline";
 import { leaderboardNode } from "./templates/leaderboard";
+import { leaderboardSettledNode } from "./templates/leaderboardSettled";
 import { highlightNode } from "./templates/highlight";
+import { highlightSettledNode } from "./templates/highlightSettled";
+import { gameHighlightNode } from "./templates/gameHighlight";
 import { gameCardNode } from "./templates/gameCard";
 import { CATEGORY_TITLES } from "./scoring";
 import type { PreloadedMarketLookup, ScrapedGameMarkets } from "./sources/ogScraper";
@@ -21,45 +24,52 @@ export interface GameInfo {
 
 export interface RenderResult {
   leaderboard: Record<Category, string>;
+  leaderboardAmerican: Record<Category, string>;
   highlights: Record<Category, string[]>;
   gameCards: Map<number, string>;
 }
 
 const ALL_CATEGORIES: Category[] = ["hr", "hit", "k", "tb", "rbi", "outs", "game"];
 const FULL_HIGHLIGHTS: Category[] = ["hr", "hit", "k", "tb", "rbi", "outs"];
+const HIGHLIGHT_CATEGORIES: Category[] = [...FULL_HIGHLIGHTS, "game"];
 export const HIGHLIGHTS_PER_CATEGORY = 4;
 
 void gameCardNode; // imported for later on-demand game card render
 
 /**
- * Phase A: render the 7 leaderboard PNGs. Targets ~15-20s CPU on a full slate.
- * Streams each PNG to R2 to keep memory low.
+ * Phase A: render the 7 %-mode leaderboard PNGs (one per category) plus 6
+ * American-mode variants for the player-prop categories (game category uses an
+ * O/U line which doesn't change between modes, so we skip it).
+ * Targets ~20-25s CPU on a full slate. Streams each PNG to R2 to keep memory low.
  */
 export async function renderLeaderboards(
   env: Env,
   dateIso: string,
   byCategory: Record<Category, Pick[]>,
-): Promise<Record<Category, string>> {
+): Promise<{ leaderboard: Record<Category, string>; leaderboardAmerican: Record<Category, string> }> {
   const renderer = await getRenderer(env);
   const leaderboard = emptyCat(() => "");
+  const leaderboardAmerican = emptyCat(() => "");
   if (!renderer) {
     console.warn("[render] renderer unavailable for leaderboards");
-    return leaderboard;
+    return { leaderboard, leaderboardAmerican };
   }
   const dateLabel = formatDateLabel(dateIso);
   const r2Prefix = `r/mlb/${dateIso}`;
   for (const cat of ALL_CATEGORIES) {
     const picks = byCategory[cat];
     if (!picks || picks.length === 0) continue;
-    const filename = `leaderboard-${cat}.png`;
-    const node = leaderboardNode({
-      category: cat,
-      title: CATEGORY_TITLES[cat],
-      picks,
-      dateLabel,
-      logoDataUrl: renderer.logoDataUrl,
-    });
+    // %-mode
     try {
+      const filename = `leaderboard-${cat}.png`;
+      const node = leaderboardNode({
+        category: cat,
+        title: CATEGORY_TITLES[cat],
+        picks,
+        dateLabel,
+        logoDataUrl: renderer.logoDataUrl,
+        oddsMode: "pct",
+      });
       const bytes = await renderer.fn(node, 1080, 1350);
       await env.LINEDRIVE_ASSETS.put(`${r2Prefix}/${filename}`, bytes, {
         httpMetadata: { contentType: "image/png" },
@@ -68,8 +78,28 @@ export async function renderLeaderboards(
     } catch (err) {
       console.error(`[render:leaderboard ${cat}] failed`, err);
     }
+    // American-odds variant (player categories only)
+    if (cat === "game") continue;
+    try {
+      const filename = `leaderboard-${cat}-american.png`;
+      const node = leaderboardNode({
+        category: cat,
+        title: CATEGORY_TITLES[cat],
+        picks,
+        dateLabel,
+        logoDataUrl: renderer.logoDataUrl,
+        oddsMode: "american",
+      });
+      const bytes = await renderer.fn(node, 1080, 1350);
+      await env.LINEDRIVE_ASSETS.put(`${r2Prefix}/${filename}`, bytes, {
+        httpMetadata: { contentType: "image/png" },
+      });
+      leaderboardAmerican[cat] = filename;
+    } catch (err) {
+      console.error(`[render:leaderboard ${cat}-american] failed`, err);
+    }
   }
-  return leaderboard;
+  return { leaderboard, leaderboardAmerican };
 }
 
 /**
@@ -89,19 +119,28 @@ export async function renderHighlights(
   }
   const dateLabel = formatDateLabel(dateIso);
   const r2Prefix = `r/mlb/${dateIso}`;
-  for (const cat of FULL_HIGHLIGHTS) {
+  for (const cat of HIGHLIGHT_CATEGORIES) {
     const picks = byCategory[cat];
     if (!picks || picks.length === 0) continue;
-    const top = picks.slice(0, HIGHLIGHTS_PER_CATEGORY);
+    const top = cat === "game"
+      ? pickTopGamesByDelta(picks, HIGHLIGHTS_PER_CATEGORY)
+      : picks.slice(0, HIGHLIGHTS_PER_CATEGORY);
     for (let i = 0; i < top.length; i++) {
       const filename = `highlight-${cat}-${i + 1}.png`;
-      const node = highlightNode({
-        category: cat,
-        title: CATEGORY_TITLES[cat],
-        pick: top[i],
-        dateLabel,
-        logoDataUrl: renderer.logoDataUrl,
-      });
+      const node = cat === "game"
+        ? gameHighlightNode({
+            title: CATEGORY_TITLES.game,
+            pick: top[i],
+            dateLabel,
+            logoDataUrl: renderer.logoDataUrl,
+          })
+        : highlightNode({
+            category: cat,
+            title: CATEGORY_TITLES[cat],
+            pick: top[i],
+            dateLabel,
+            logoDataUrl: renderer.logoDataUrl,
+          });
       try {
         const bytes = await renderer.fn(node, 1080, 1080);
         await env.LINEDRIVE_ASSETS.put(`${r2Prefix}/${filename}`, bytes, {
@@ -116,6 +155,109 @@ export async function renderHighlights(
   return highlights;
 }
 
+// Order games by largest |model − market| edge. Games without an OG line drop
+// to the bottom; if no game has a line we fall back to the score ranking the
+// pipeline already produced.
+function pickTopGamesByDelta(picks: Pick[], n: number): Pick[] {
+  const scored = picks.map((p) => ({
+    pick: p,
+    delta: p.marketOverLine !== null && p.marketOverLine !== undefined
+      ? Math.abs(p.score - p.marketOverLine)
+      : -1,
+  }));
+  const anyLine = scored.some((s) => s.delta >= 0);
+  if (!anyLine) return picks.slice(0, n);
+  scored.sort((a, b) => b.delta - a.delta);
+  return scored.slice(0, n).map((s) => s.pick);
+}
+
+/**
+ * Settled phase A': render result-stamped leaderboard PNGs (top 10 per category)
+ * for a date that has had settlement applied (pick.result set). One file per
+ * player category, written as `leaderboard-{cat}-settled.png`.
+ */
+export async function renderSettledLeaderboards(
+  env: Env,
+  dateIso: string,
+  byCategory: Record<Category, Pick[]>,
+): Promise<Record<Category, string>> {
+  const renderer = await getRenderer(env);
+  const settled = emptyCat(() => "");
+  if (!renderer) {
+    console.warn("[render] renderer unavailable for settled leaderboards");
+    return settled;
+  }
+  const dateLabel = formatDateLabel(dateIso);
+  const r2Prefix = `r/mlb/${dateIso}`;
+  for (const cat of FULL_HIGHLIGHTS) {
+    const picks = byCategory[cat];
+    if (!picks || picks.length === 0) continue;
+    const filename = `leaderboard-${cat}-settled.png`;
+    const node = leaderboardSettledNode({
+      category: cat,
+      title: CATEGORY_TITLES[cat],
+      picks,
+      dateLabel,
+      logoDataUrl: renderer.logoDataUrl,
+    });
+    try {
+      const bytes = await renderer.fn(node, 1080, 1350);
+      await env.LINEDRIVE_ASSETS.put(`${r2Prefix}/${filename}`, bytes, {
+        httpMetadata: { contentType: "image/png" },
+      });
+      settled[cat] = filename;
+    } catch (err) {
+      console.error(`[render:leaderboard-settled ${cat}] failed`, err);
+    }
+  }
+  return settled;
+}
+
+/**
+ * Settled phase B': render result-stamped highlight PNGs for the player-prop
+ * categories on a date that has had settlement applied (pick.result set).
+ * Mirrors renderHighlights() filename layout with a `-settled` suffix.
+ */
+export async function renderSettledHighlights(
+  env: Env,
+  dateIso: string,
+  byCategory: Record<Category, Pick[]>,
+): Promise<Record<Category, string[]>> {
+  const renderer = await getRenderer(env);
+  const settled = emptyCat<string[]>(() => []);
+  if (!renderer) {
+    console.warn("[render] renderer unavailable for settled highlights");
+    return settled;
+  }
+  const dateLabel = formatDateLabel(dateIso);
+  const r2Prefix = `r/mlb/${dateIso}`;
+  for (const cat of FULL_HIGHLIGHTS) {
+    const picks = byCategory[cat];
+    if (!picks || picks.length === 0) continue;
+    const top = picks.slice(0, HIGHLIGHTS_PER_CATEGORY);
+    for (let i = 0; i < top.length; i++) {
+      const filename = `highlight-${cat}-${i + 1}-settled.png`;
+      const node = highlightSettledNode({
+        category: cat,
+        title: CATEGORY_TITLES[cat],
+        pick: top[i],
+        dateLabel,
+        logoDataUrl: renderer.logoDataUrl,
+      });
+      try {
+        const bytes = await renderer.fn(node, 1080, 1080);
+        await env.LINEDRIVE_ASSETS.put(`${r2Prefix}/${filename}`, bytes, {
+          httpMetadata: { contentType: "image/png" },
+        });
+        settled[cat].push(filename);
+      } catch (err) {
+        console.error(`[render:settled ${cat}-${i + 1}] failed`, err);
+      }
+    }
+  }
+  return settled;
+}
+
 // Keep the old all-in-one entry for backward compatibility (now unused but
 // referenced by older callers). Combines both phases.
 export async function renderAllImages(
@@ -126,11 +268,11 @@ export async function renderAllImages(
   _games: GameInfo[],
   _market: PreloadedMarketLookup,
 ): Promise<RenderResult> {
-  const leaderboard = await renderLeaderboards(env, dateIso, byCategory);
+  const { leaderboard, leaderboardAmerican } = await renderLeaderboards(env, dateIso, byCategory);
   const highlights = renderScope === "full"
     ? await renderHighlights(env, dateIso, byCategory)
     : emptyCat<string[]>(() => []);
-  return { leaderboard, highlights, gameCards: new Map() };
+  return { leaderboard, leaderboardAmerican, highlights, gameCards: new Map() };
 }
 
 function pickGameTopHighlight(byCategory: Record<Category, Pick[]>, gamePk: number): { pick: Pick; category: Category } | null {
@@ -181,7 +323,7 @@ async function getRenderer(env: Env): Promise<CachedRenderer | null> {
     // @ts-expect-error - wasm import handled by wrangler bundler
     const resvgWasm = (await import("@resvg/resvg-wasm/index_bg.wasm")).default;
     try { await initWasm(resvgWasm as WebAssembly.Module); }
-    catch (e) { if (!String(e).includes("already")) throw e; }
+    catch (e) { if (!/already/i.test(String(e))) throw e; }
 
     const [sansRegular, sansBold, displayBold, displayExtraBold, logoBytes] = await Promise.all([
       loadAsset(env, "/fonts/FunnelSans-Regular.ttf"),

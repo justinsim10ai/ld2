@@ -41,11 +41,15 @@ function isoOffset(baseIso, days) {
 }
 function dayLabel(iso) {
   const todayIso = todayUtcIso()
-  const tomIso = isoOffset(todayIso, 1)
-  const d2Iso = isoOffset(todayIso, 2)
   if (iso === todayIso) return 'Today'
-  if (iso === tomIso) return 'Tomorrow'
-  if (iso === d2Iso) return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short' })
+  if (iso === isoOffset(todayIso, 1)) return 'Tomorrow'
+  if (iso === isoOffset(todayIso, -1)) return 'Yesterday'
+  // Past 2 and future 2 use weekday; further uses month/day
+  const within3Past = [-2, -3].some((o) => iso === isoOffset(todayIso, o))
+  const future2 = iso === isoOffset(todayIso, 2)
+  if (within3Past || future2) {
+    return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short' })
+  }
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 function shortDate(iso) {
@@ -164,6 +168,14 @@ function DownloadButton({ payload, filename, baseName }) {
   )
 }
 
+function updateForTitle(dateIso) {
+  if (!dateIso) return ''
+  const todayIso = todayUtcIso()
+  if (dateIso < todayIso) return `Re-settle ${dateIso} and re-render result cards`
+  if (dateIso === todayIso) return `Re-run today's pipeline and re-render highlights`
+  return `Re-run leaderboards for ${dateIso}`
+}
+
 function formatMarket(pct, american, mode) {
   if (pct === null || pct === undefined) return '—'
   const pctStr = `${Math.round(pct * 100)}%`
@@ -187,6 +199,11 @@ function App() {
     setOddsMode(m)
     try { localStorage.setItem('linedrive:oddsMode', m) } catch { /* ignore */ }
   }, [])
+  const [viewMode, setViewMode] = useState('picks')
+  const [adminKey, setAdminKey] = useState(() => {
+    try { return localStorage.getItem('linedrive:adminKey') || '' } catch { return '' }
+  })
+  const [updateState, setUpdateState] = useState({ status: 'idle', message: '' }) // idle | running | error
   const [path, setPath] = useState(() => window.location.pathname)
   const slug = useMemo(() => parseSlug(path), [path])
   const showAbout = useMemo(() => isAboutPath(path), [path])
@@ -240,6 +257,51 @@ function App() {
     setPath('/')
   }, [])
 
+  const promptAdminKey = useCallback(() => {
+    const k = window.prompt('Admin key:')
+    if (!k) return
+    try { localStorage.setItem('linedrive:adminKey', k) } catch { /* ignore */ }
+    setAdminKey(k)
+  }, [])
+
+  const clearAdminKey = useCallback(() => {
+    try { localStorage.removeItem('linedrive:adminKey') } catch { /* ignore */ }
+    setAdminKey('')
+  }, [])
+
+  const handleUpdate = useCallback(async () => {
+    if (!adminKey || updateState.status === 'running') return
+    const dateIso = payload?.date
+    if (!dateIso) return
+    const todayIso = todayUtcIso()
+    const isPast = dateIso < todayIso
+    const isToday = dateIso === todayIso
+    setUpdateState({ status: 'running', message: isPast ? 'Settling…' : 'Refreshing…' })
+    const k = encodeURIComponent(adminKey)
+    try {
+      if (isPast) {
+        const res = await fetch(`/admin/settle?key=${k}&date=${dateIso}`)
+        if (res.status === 403) { clearAdminKey(); throw new Error('bad admin key') }
+        if (!res.ok) throw new Error(`settle HTTP ${res.status}`)
+      } else {
+        const scope = isToday ? 'full' : 'leaderboards-only'
+        const r1 = await fetch(`/admin/run?key=${k}&date=${dateIso}&scope=${scope}`)
+        if (r1.status === 403) { clearAdminKey(); throw new Error('bad admin key') }
+        if (!r1.ok) throw new Error(`run HTTP ${r1.status}`)
+        if (scope === 'full') {
+          setUpdateState({ status: 'running', message: 'Rendering highlights…' })
+          const r2 = await fetch(`/admin/render-highlights?key=${k}&date=${dateIso}`)
+          if (!r2.ok) throw new Error(`render HTTP ${r2.status}`)
+        }
+      }
+      await loadPayload(slug)
+      setUpdateState({ status: 'idle', message: '' })
+    } catch (err) {
+      setUpdateState({ status: 'error', message: String(err.message || err) })
+      setTimeout(() => setUpdateState({ status: 'idle', message: '' }), 5000)
+    }
+  }, [adminKey, updateState.status, payload?.date, slug, loadPayload, clearAdminKey])
+
   useEffect(() => {
     if (showAbout) {
       window.scrollTo({ top: 0, behavior: 'instant' })
@@ -259,9 +321,11 @@ function App() {
     if (currentDate) set.add(currentDate)
     return [...set].sort((a, b) => b.localeCompare(a))
   }, [archiveDates, currentDate])
-  const currentIdx = datesAvailable.indexOf(currentDate)
-  const olderDate = currentIdx >= 0 && currentIdx < datesAvailable.length - 1 ? datesAvailable[currentIdx + 1] : null
-  const newerDate = currentIdx > 0 ? datesAvailable[currentIdx - 1] : null
+  // The named-day strip covers D-3 .. D+2; the "← Older" pill jumps to the most
+  // recent archive that's older than the leftmost strip date, so it always
+  // represents "go beyond what's already visible".
+  const stripFloor = isoOffset(todayUtcIso(), -3)
+  const olderDate = useMemo(() => datesAvailable.find((d) => d < stripFloor) ?? null, [datesAvailable, stripFloor])
 
   return (
     <main className="app-shell">
@@ -287,6 +351,31 @@ function App() {
                 title="Show OG market as American odds (-110, +260, …)"
               >American</button>
             </div>
+            {adminKey ? (
+              <div className="admin-controls">
+                <button
+                  className={`button primary admin-update ${updateState.status === 'running' ? 'busy' : ''}`}
+                  onClick={handleUpdate}
+                  disabled={updateState.status === 'running' || !payload?.date}
+                  title={updateForTitle(payload?.date)}
+                >
+                  {updateState.status === 'running' ? updateState.message : 'Update'}
+                </button>
+                <button
+                  className="admin-link"
+                  onClick={clearAdminKey}
+                  title="Clear admin key"
+                  aria-label="Clear admin key"
+                >×</button>
+              </div>
+            ) : (
+              <button
+                className="admin-link"
+                onClick={promptAdminKey}
+                title="Set admin key"
+                aria-label="Set admin key"
+              >⋯</button>
+            )}
             <button className="button secondary" onClick={goAbout}>About</button>
             <span className="eyebrow">Daily · MLB</span>
           </div>
@@ -305,6 +394,9 @@ function App() {
               {payload.notes?.map((n, i) => (
                 <span key={i} className="meta-note">{n}</span>
               ))}
+              {updateState.status === 'error' && (
+                <span className="meta-note meta-error">Update failed: {updateState.message}</span>
+              )}
             </div>
           )}
         </div>
@@ -333,14 +425,20 @@ function App() {
       </details>
 
       <nav className="date-strip">
-        {[0, 1, 2].map((offset) => {
+        {[-3, -2, -1, 0, 1, 2].map((offset) => {
           const targetIso = isoOffset(todayUtcIso(), offset)
           const isActive = currentDate === targetIso
+          // Past-day pills only navigate if there's an archive payload for that date.
+          const isPast = offset < 0
+          const hasArchive = datesAvailable.includes(targetIso)
+          const disabled = isPast && !hasArchive
           return (
             <button
               key={targetIso}
-              className={`date-pill ${isActive ? 'active' : ''}`}
+              className={`date-pill ${isActive ? 'active' : ''} ${disabled ? 'disabled' : ''}`}
+              disabled={disabled}
               onClick={() => navigate(offset === 0 ? null : { league: 'mlb', date: targetIso })}
+              title={disabled ? 'No archive for this date' : ''}
             >
               <span className="date-pill-label">{dayLabel(targetIso)}</span>
               <span className="date-pill-sub">{shortDate(targetIso)}</span>
@@ -386,17 +484,47 @@ function App() {
 
           {block && (
             <>
+              {(() => {
+                const settledHl = block.highlightSettledImages ?? []
+                const hasSettled = settledHl.length > 0 || !!block.leaderboardSettledImage
+                const showResults = hasSettled && viewMode === 'results'
+                const leaderboardFile = showResults && block.leaderboardSettledImage
+                  ? block.leaderboardSettledImage
+                  : (oddsMode === 'american' && block.leaderboardImageAmerican)
+                    ? block.leaderboardImageAmerican
+                    : block.leaderboardImage
+                const highlightFiles = showResults ? settledHl : (block.highlightImages ?? [])
+                const variantSuffix = showResults ? '-result' : ''
+                const variantLabel = showResults ? 'Results' : 'Projections'
+                return (
+                  <>
+                    {hasSettled && (
+                      <div className="view-toggle-row">
+                        <div className="view-toggle" role="group" aria-label="Card view">
+                          <button
+                            className={`view-pill ${viewMode === 'picks' ? 'active' : ''}`}
+                            onClick={() => setViewMode('picks')}
+                            title="Show pre-game projection cards"
+                          >Projections</button>
+                          <button
+                            className={`view-pill ${viewMode === 'results' ? 'active' : ''}`}
+                            onClick={() => setViewMode('results')}
+                            title="Show settled cards with results + $10 payout"
+                          >Results</button>
+                        </div>
+                      </div>
+                    )}
               <section className="board-and-highlights">
                 <div className="board-col">
-                  {block.leaderboardImage ? (
+                  {leaderboardFile ? (
                     <a
                       className="board-image-link"
-                      href={downloadUrl(payload, block.leaderboardImage, dlName(activeCategory, payload.date))}
-                      download={dlName(activeCategory, payload.date)}
+                      href={downloadUrl(payload, leaderboardFile, dlName(activeCategory, payload.date, variantSuffix.replace(/^-/, '')))}
+                      download={dlName(activeCategory, payload.date, variantSuffix.replace(/^-/, ''))}
                     >
                       <img
-                        src={imgUrl(payload, block.leaderboardImage)}
-                        alt={`${CATEGORY_LABELS[activeCategory]} leaderboard`}
+                        src={imgUrl(payload, leaderboardFile)}
+                        alt={`${CATEGORY_LABELS[activeCategory]} leaderboard (${variantLabel})`}
                         className="leaderboard-image"
                       />
                     </a>
@@ -407,49 +535,60 @@ function App() {
                   )}
                   <DownloadButton
                     payload={payload}
-                    filename={block.leaderboardImage}
-                    baseName={dlName(activeCategory, payload.date).replace(/\.png$/, '')}
+                    filename={leaderboardFile}
+                    baseName={dlName(activeCategory, payload.date, variantSuffix.replace(/^-/, '')).replace(/\.png$/, '')}
                   />
                 </div>
 
                 <div className="highlight-col">
-                  {block.highlightImages?.length > 0 ? (
-                    <div className="highlights-2x2">
-                      {block.highlightImages.slice(0, 4).map((filename, i) => {
-                        const baseName = dlName(activeCategory, payload.date, `top${i + 1}`).replace(/\.png$/, '')
-                        const jpgName = `${baseName}.jpg`
-                        const onClick = (e) => {
-                          e.preventDefault()
-                          downloadAsBlob(downloadUrl(payload, filename, jpgName), jpgName, { format: 'jpeg' })
-                        }
-                        return (
-                          <div key={filename} className="highlight-card-mini">
-                            <a href={downloadUrl(payload, filename, jpgName)} onClick={onClick}>
-                              <img
-                                src={imgUrl(payload, filename)}
-                                alt={`${CATEGORY_LABELS[activeCategory]} #${i + 1}`}
-                              />
-                            </a>
-                            <a
-                              className="highlight-mini-download"
-                              href={downloadUrl(payload, filename, jpgName)}
-                              onClick={onClick}
-                              title={`Download ${jpgName}`}
-                            >
-                              <span className="highlight-mini-rank">#{i + 1}</span>
-                              <span className="highlight-mini-name">Download JPEG</span>
-                            </a>
+                  {(() => {
+                    const images = highlightFiles
+                    return (
+                      <>
+                        {images.length > 0 ? (
+                          <div className="highlights-2x2">
+                            {images.slice(0, 4).map((filename, i) => {
+                              const suffix = `top${i + 1}${variantSuffix}`
+                              const baseName = dlName(activeCategory, payload.date, suffix).replace(/\.png$/, '')
+                              const jpgName = `${baseName}.jpg`
+                              const onClick = (e) => {
+                                e.preventDefault()
+                                downloadAsBlob(downloadUrl(payload, filename, jpgName), jpgName, { format: 'jpeg' })
+                              }
+                              return (
+                                <div key={filename} className="highlight-card-mini">
+                                  <a href={downloadUrl(payload, filename, jpgName)} onClick={onClick}>
+                                    <img
+                                      src={imgUrl(payload, filename)}
+                                      alt={`${CATEGORY_LABELS[activeCategory]} #${i + 1}${showResults ? ' (settled)' : ''}`}
+                                    />
+                                  </a>
+                                  <a
+                                    className="highlight-mini-download"
+                                    href={downloadUrl(payload, filename, jpgName)}
+                                    onClick={onClick}
+                                    title={`Download ${jpgName}`}
+                                  >
+                                    <span className="highlight-mini-rank">#{i + 1}</span>
+                                    <span className="highlight-mini-name">Download JPEG</span>
+                                  </a>
+                                </div>
+                              )
+                            })}
                           </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="highlight-empty">
-                      <p>Highlight cards aren&rsquo;t generated for the Game Total category &mdash; that one&rsquo;s a games-as-rows leaderboard only. The full ranking is below.</p>
-                    </div>
-                  )}
+                        ) : (
+                          <div className="highlight-empty">
+                            <p>No highlight cards have been rendered yet for this category. They&rsquo;ll appear after today&rsquo;s render phase runs (or after you click Update).</p>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               </section>
+                  </>
+                )
+              })()}
 
               <section className="full-table-section">
                 <h3>Full ranking · {CATEGORY_LABELS[activeCategory]}</h3>

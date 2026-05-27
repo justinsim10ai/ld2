@@ -363,6 +363,7 @@ function gameScoreToPick(s: GameScored, rank: number): Pick {
     marketPct: null,
     marketOddsAmerican: null,
     marketLine: null,
+    marketOverLine: null,
     lineupProjected: false,
     weatherSummary: ctx.weather
       ? `${ctx.weather.temperatureF}°F · wind ${ctx.weather.windSpeedMph} mph`
@@ -413,6 +414,7 @@ function batterToPick(s: Scored<BatterContext>, rank: number): Pick {
     marketPct: null,
     marketOddsAmerican: null,
     marketLine: null,
+    marketOverLine: null,
     lineupProjected: ctx.lineupProjected,
     weatherSummary: weatherSummary(ctx),
   };
@@ -432,6 +434,7 @@ function pitcherToPick(s: Scored<PitcherContext>, rank: number, unit: string): P
     marketPct: null,
     marketOddsAmerican: null,
     marketLine: null,
+    marketOverLine: null,
     lineupProjected: false,
     weatherSummary: ctx.weather
       ? `${ctx.weather.temperatureF}°F, ${ctx.weather.shortForecast}`
