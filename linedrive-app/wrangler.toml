@@ -1,0 +1,44 @@
+name = "linedrive"
+main = "worker/index.ts"
+compatibility_date = "2026-05-06"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+routes = [
+  { pattern = "linedrive.weregoingplaces.xyz", custom_domain = true },
+]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# Daily MLB crawls. We split today + day+1 + day+2 into three separate cron firings
+# (5 minutes apart) so each gets its own 128MB Worker memory budget — running all three
+# in one invocation overflows the limit when the OG.com scraper is active.
+#  - 15:00 UTC (11am ET DST): today's slate, full render, scraper on
+#  - 15:05 UTC: tomorrow's slate, leaderboards only, scraper off
+#  - 15:10 UTC: day-after slate, leaderboards only, scraper off
+[triggers]
+crons = [
+  "0 15 * * *",   # today phase A (data + leaderboards)
+  "2 15 * * *",   # today phase B (24 highlight PNGs)
+  "5 15 * * *",   # day+1 phase A (leaderboards only)
+  "10 15 * * *",  # day+2 phase A (leaderboards only)
+]
+
+# KV namespace for the daily JSON payload.
+# Create with: wrangler kv namespace create LINEDRIVE_KV
+# Then paste the returned id below.
+[[kv_namespaces]]
+binding = "LINEDRIVE_KV"
+id = "7f33a27d2a5a48f69ba3fe08f5d38115"
+
+# R2 bucket for generated PNG assets.
+# Create with: wrangler r2 bucket create linedrive-assets
+[[r2_buckets]]
+binding = "LINEDRIVE_ASSETS"
+bucket_name = "linedrive-assets"
+
+# ADMIN_KEY is a secret (set via `wrangler secret put ADMIN_KEY`), not a plaintext var.
+# Used to gate /admin/run for ad-hoc pipeline triggers.
