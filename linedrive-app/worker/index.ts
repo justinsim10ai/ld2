@@ -2,6 +2,7 @@ import type { Env, DailyPayload, League } from "./types";
 import { runDailyPipeline, runHighlightPhase, readArchiveIndex } from "./pipeline";
 import { settlePayload, renderAndPersistSettled, runSettlementPhase } from "./settlement";
 import { sendDailyDigest } from "./mailer";
+import { storeSavantCsv, readSavant } from "./sources/savant";
 
 const DIGEST_RECIPIENT = "justin.snider@crypto.com";
 
@@ -49,6 +50,9 @@ export default {
     }
     if (p === "/admin/send-digest") {
       return handleSendDigest(request, env);
+    }
+    if (p === "/admin/savant") {
+      return handleSavantIngest(request, env);
     }
 
     // /r/mlb-2026-05-26 → serve SPA shell; SPA reads the slug.
@@ -229,6 +233,35 @@ async function handleAdminRun(request: Request, env: Env, ctx: ExecutionContext)
     });
   } catch (err) {
     console.error(`[admin] failed`, err);
+    return jsonResponse({ status: "error", error: String(err) }, 500);
+  }
+}
+
+// Ingest Statcast CSVs uploaded by the off-worker savant job (savant blocks
+// Worker egress). GET also reports current KV freshness for debugging.
+async function handleSavantIngest(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const provided = url.searchParams.get("key") ?? "";
+  if (!env.ADMIN_KEY || provided !== env.ADMIN_KEY) {
+    return new Response("forbidden", { status: 403 });
+  }
+  if (request.method === "GET") {
+    const s = await readSavant(env);
+    return jsonResponse({ status: "ok", batters: s.batters.size, pitchers: s.pitchers.size });
+  }
+  const type = url.searchParams.get("type");
+  if (type !== "batters" && type !== "pitchers") {
+    return jsonResponse({ error: "type must be 'batters' or 'pitchers'" }, 400);
+  }
+  try {
+    const csv = await request.text();
+    const stored = await storeSavantCsv(env, type, csv);
+    if (stored === 0) {
+      return jsonResponse({ status: "rejected", type, stored, note: "0 rows parsed — kept previous data" }, 422);
+    }
+    return jsonResponse({ status: "done", type, stored });
+  } catch (err) {
+    console.error("[savant-ingest] failed", err);
     return jsonResponse({ status: "error", error: String(err) }, 500);
   }
 }

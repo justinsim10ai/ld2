@@ -1,0 +1,45 @@
+name: Statcast upload (LineDrive)
+
+# Baseball Savant blocks Cloudflare Worker egress, so we fetch the Statcast
+# leaderboards here (GitHub-hosted runner, a normal IP) and POST the CSVs to the
+# LineDrive worker's /admin/savant ingest endpoint, which stores them in KV for
+# the daily pipeline to read.
+#
+# Requires repo secret LINEDRIVE_ADMIN_KEY (= the worker's ADMIN_KEY).
+
+on:
+  schedule:
+    - cron: "30 14 * * *" # 14:30 UTC daily, ~30 min before the 15:00 pipeline run
+  workflow_dispatch: {}
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Statcast CSVs and upload to LineDrive
+        env:
+          KEY: ${{ secrets.LINEDRIVE_ADMIN_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEY:-}" ]; then echo "LINEDRIVE_ADMIN_KEY secret is not set"; exit 1; fi
+          YEAR=$(date -u +%Y)
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+          BASE="https://baseballsavant.mlb.com/leaderboard/custom"
+          WORKER="https://linedrive.weregoingplaces.xyz/admin/savant"
+
+          echo "== Fetching batter Statcast (year $YEAR) =="
+          curl -fsS -A "$UA" -H 'Referer: https://baseballsavant.mlb.com/' \
+            "$BASE?year=$YEAR&type=batter&min=10&selections=barrel_batted_rate,hard_hit_percent,avg_best_speed&csv=true" \
+            -o batters.csv
+          echo "batters.csv lines: $(wc -l < batters.csv)"
+
+          echo "== Fetching pitcher Statcast =="
+          curl -fsS -A "$UA" -H 'Referer: https://baseballsavant.mlb.com/' \
+            "$BASE?year=$YEAR&type=pitcher&min=10&selections=whiff_percent,k_percent&csv=true" \
+            -o pitchers.csv
+          echo "pitchers.csv lines: $(wc -l < pitchers.csv)"
+
+          echo "== Uploading batters =="
+          curl -fsS -X POST --data-binary @batters.csv "$WORKER?key=$KEY&type=batters"; echo
+          echo "== Uploading pitchers =="
+          curl -fsS -X POST --data-binary @pitchers.csv "$WORKER?key=$KEY&type=pitchers"; echo

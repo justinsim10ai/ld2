@@ -18,7 +18,7 @@ const LEAGUE: League = "mlb";
 import { lookupPark } from "./parks";
 import { fetchTodaysGames, fetchLineupForGame, fetchTeamActiveRoster } from "./sources/mlbSchedule";
 import { fetchPlayerProfiles, fetchAllTeamHittingKRates, fetchVsPitcher } from "./sources/mlbPlayer";
-import { fetchSavantBatters, fetchSavantPitchers } from "./sources/savant";
+import { readSavant } from "./sources/savant";
 import type { PlayerProfile, TeamSeasonHitting, VsPitcherLine } from "./sources/mlbPlayer";
 import { fetchParkWeatherAt } from "./sources/weather";
 import { buildMarketLookup } from "./sources/ogMarkets";
@@ -112,16 +112,14 @@ export async function runDailyPipeline(
 
   const teamK = await fetchAllTeamHittingKRates();
 
-  // Statcast (Baseball Savant) — two bulk CSVs, merged onto the profiles by id.
-  // Best-effort: failures leave fields null and scorers fall back to neutral.
-  const [savantBatters, savantPitchers] = await Promise.all([
-    fetchSavantBatters(),
-    fetchSavantPitchers(),
-  ]);
+  // Statcast (Baseball Savant) — read from KV, populated off-worker by the
+  // savant uploader (savant blocks Worker egress). Merge onto profiles by id;
+  // empty/missing → fields stay null and scorers fall back to neutral.
+  const savant = await readSavant(env);
   for (const [id, prof] of profiles) {
-    const sb = savantBatters.get(id);
+    const sb = savant.batters.get(id);
     if (sb) { prof.barrelRate = sb.barrelRate; prof.hardHitPct = sb.hardHitPct; prof.bestSpeed = sb.bestSpeed; }
-    const sp = savantPitchers.get(id);
+    const sp = savant.pitchers.get(id);
     if (sp) { prof.whiffPct = sp.whiffPct; prof.kPctSavant = sp.kPct; }
   }
 
