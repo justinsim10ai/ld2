@@ -1,0 +1,95 @@
+/* Factor index grid + per-factor page styling. Builds on About.css shell. */
+
+.factor-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.factor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(182, 209, 230, 0.12);
+  background: rgba(7, 8, 29, 0.4);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.factor-card:hover {
+  border-color: var(--og-flame);
+  transform: translateY(-1px);
+}
+.factor-card-col {
+  font-family: 'Funnel Display', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--og-flame);
+}
+.factor-card-name {
+  font-weight: 600;
+  color: var(--og-cloud);
+}
+.factor-card-desc {
+  font-size: 0.85rem;
+  color: rgba(182, 209, 230, 0.62);
+  line-height: 1.4;
+}
+
+.proxy-mark {
+  color: var(--og-flame);
+  font-weight: 700;
+  margin-left: 1px;
+}
+
+.factor-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.factor-meta-pill {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(122, 227, 184, 0.12);
+  color: #7AE3B8;
+}
+.factor-meta-pill.proxy {
+  background: rgba(249, 98, 0, 0.14);
+  color: var(--og-flame);
+}
+.factor-meta-cats {
+  font-size: 0.82rem;
+  color: rgba(182, 209, 230, 0.6);
+}
+
+.factor-index-link { margin-top: 6px; }
+.link-inline {
+  background: none;
+  border: none;
+  color: var(--og-flame);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+.link-inline:hover { text-decoration: underline; }
+
+.factor-leaders .lead-val {
+  font-family: 'Funnel Display', system-ui, sans-serif;
+  font-weight: 700;
+  color: var(--og-cloud);
+  text-align: right;
+}
+.muted-note {
+  color: rgba(182, 209, 230, 0.55);
+  font-style: italic;
+}

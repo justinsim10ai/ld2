@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, Fragment } from 'react'
 import About from './About'
+import { FactorsIndex, FactorPage } from './FactorPages'
+import { FACTORS, factorsForCategory } from './factors'
 import './App.css'
 
 const CATEGORY_ORDER = ['hr', 'hit', 'k', 'tb', 'rbi', 'outs', 'game']
@@ -64,6 +66,13 @@ function parseSlug(pathname) {
 
 function isAboutPath(pathname) {
   return /^\/about\/?$/.test(pathname)
+}
+
+function parseFactorPath(pathname) {
+  if (/^\/factors\/?$/.test(pathname)) return { index: true }
+  const m = pathname.match(/^\/factors\/([a-zA-Z0-9]+)\/?$/)
+  if (!m) return null
+  return { id: m[1] }
 }
 
 function imgUrl(payload, filename) {
@@ -148,22 +157,170 @@ async function downloadAsBlob(srcUrl, suggestedName, { format = 'png' } = {}) {
   }
 }
 
-function DownloadButton({ payload, filename, baseName }) {
-  // 1080×1350 JPEG works for both Instagram (4:5 portrait native) and X/Twitter,
-  // so there's no need for a platform picker. One button, one file.
+function tweetIntentUrl({ text, url }) {
+  const params = new URLSearchParams()
+  // Combine text + url into one query param so X doesn't render an empty preview.
+  const combined = url ? `${text} ${url}` : text
+  if (combined) params.set('text', combined)
+  return `https://twitter.com/intent/tweet?${params.toString()}`
+}
+
+function shareLink(payload) {
+  const date = payload?.date
+  const league = payload?.league ?? 'mlb'
+  if (!date) return 'https://linedrive.weregoingplaces.xyz'
+  return `https://linedrive.weregoingplaces.xyz/r/${league}-${date}`
+}
+
+function composeShareText({ kind, payload, pick, game, category }) {
+  // Tool is internal — share text is image-driven; no URL back to the app.
+  const url = null
+  void payload
+  if (category === 'game' && (pick || game)) {
+    const matchup = pick ? pick.playerName : `${game.awayAbbrev} @ ${game.homeAbbrev}`
+    const model = pick ? pick.score : game?.modelTotalRuns
+    const line = pick ? pick.marketOverLine : game?.marketLine
+    let detail = ''
+    if (typeof model === 'number' && typeof line === 'number') {
+      const delta = model - line
+      const side = delta >= 0 ? 'OVER' : 'UNDER'
+      const sign = delta >= 0 ? '+' : '−'
+      detail = ` — model ${model.toFixed(1)} R vs @OG_com O/U ${line} → ${side} ${sign}${Math.abs(delta).toFixed(1)} R`
+    }
+    return { text: `📈 ${matchup}${detail}.`, url }
+  }
+  if (kind === 'leaderboard') {
+    const label = CATEGORY_LABELS[category] || ''
+    return {
+      text: `Tonight's ${label} leaderboard — model rankings via @OG_com.`,
+      url,
+    }
+  }
+  if (kind === 'pick' && pick) {
+    const catLabel = CATEGORY_LABELS[category] || category
+    const odds = pick.marketOddsAmerican
+    const oddsStr = odds == null ? '' : ` (@OG_com ${odds > 0 ? `+${odds}` : odds})`
+    return {
+      text: `🔥 ${pick.playerName} (${pick.team}) — model #${pick.rank} for ${catLabel}${oddsStr}.`,
+      url,
+    }
+  }
+  return { text: `LineDrive — daily MLB props ranked, odds via @OG_com.`, url }
+}
+
+function canShareFiles() {
+  if (typeof navigator === 'undefined' || typeof navigator.canShare !== 'function') return false
+  try {
+    const probe = new File([new Blob(['x'], { type: 'image/jpeg' })], 'x.jpg', { type: 'image/jpeg' })
+    return navigator.canShare({ files: [probe] })
+  } catch {
+    return false
+  }
+}
+
+async function shareImageViaSystem({ srcUrl, jpgName, text, title }) {
+  if (!srcUrl) return
+  try {
+    const res = await fetch(srcUrl, { credentials: 'include' })
+    if (!res.ok) { alert(`Share failed: HTTP ${res.status}`); return }
+    let blob = await res.blob()
+    if (blob.type === 'image/png') {
+      try { blob = await pngBlobToJpegBlob(blob) } catch { /* keep PNG */ }
+    }
+    const file = new File([blob], jpgName, { type: blob.type || 'image/jpeg' })
+    await navigator.share({ files: [file], text, title })
+  } catch (err) {
+    if (err?.name === 'AbortError') return
+    alert(`Share failed: ${err?.message || err}`)
+  }
+}
+
+function TwitterIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2H21.5l-7.5 8.57L23 22h-6.766l-5.297-6.918L4.8 22H1.54l8.02-9.166L1 2h6.91l4.788 6.33L18.244 2zm-1.187 18h1.876L7.05 4H5.05l12.007 16z"/>
+    </svg>
+  )
+}
+
+function ShareIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="18" cy="5" r="3"/>
+      <circle cx="6" cy="12" r="3"/>
+      <circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+  )
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  )
+}
+
+function TweetButton({ text, url, compact = false }) {
+  const href = tweetIntentUrl({ text, url })
+  if (compact) {
+    return (
+      <a className="mini-icon-btn" href={href} target="_blank" rel="noopener noreferrer" title="Tweet this card">
+        <TwitterIcon />
+      </a>
+    )
+  }
+  return (
+    <a className="button secondary" href={href} target="_blank" rel="noopener noreferrer" title="Tweet this card">
+      Tweet
+    </a>
+  )
+}
+
+function ShareButton({ srcUrl, jpgName, text, title, compact = false }) {
+  const [supported, setSupported] = useState(false)
+  useEffect(() => { setSupported(canShareFiles()) }, [])
+  if (!supported) return null
+  const handle = (e) => {
+    e.preventDefault()
+    shareImageViaSystem({ srcUrl, jpgName, text, title })
+  }
+  if (compact) {
+    return (
+      <button type="button" className="mini-icon-btn" onClick={handle} title="Share via system sheet (Instagram, Threads, Messages…)">
+        <ShareIcon />
+      </button>
+    )
+  }
+  return (
+    <button type="button" className="button secondary" onClick={handle} title="Share via system sheet (Instagram, Threads, Messages…)">
+      Share
+    </button>
+  )
+}
+
+function ShareRow({ payload, filename, baseName, context }) {
   if (!filename) {
     return <div className="download-row"><span className="download-disabled">Not rendered</span></div>
   }
-  const name = `${baseName}.jpg`
-  const handleClick = (e) => {
+  const jpgName = `${baseName}.jpg`
+  const srcUrl = downloadUrl(payload, filename, jpgName)
+  const { text, url } = composeShareText({ ...context, payload })
+  const handleDownload = (e) => {
     e.preventDefault()
-    downloadAsBlob(downloadUrl(payload, filename, name), name, { format: 'jpeg' })
+    downloadAsBlob(srcUrl, jpgName, { format: 'jpeg' })
   }
   return (
     <div className="download-row">
-      <button type="button" className="button primary" onClick={handleClick}>
+      <button type="button" className="button primary" onClick={handleDownload}>
         Download JPEG
       </button>
+      <TweetButton text={text} url={url} />
+      <ShareButton srcUrl={srcUrl} jpgName={jpgName} text={text} title="LineDrive" />
     </div>
   )
 }
@@ -183,6 +340,189 @@ function formatMarket(pct, american, mode) {
     return american > 0 ? `+${american}` : String(american)
   }
   return pctStr
+}
+
+function pickKey(p) {
+  return `${p.playerId}-${p.rank}`
+}
+
+function formatEdge(edge) {
+  if (edge == null) return '—'
+  if (edge > 0) return `▲${edge}`
+  if (edge < 0) return `▼${-edge}`
+  return '—'
+}
+
+// Registry-driven ranking table: one column per scoring factor for the active
+// category. Headers link to the factor's explainer page; rows expand to a full
+// breakdown; an "edge vs market" sort surfaces picks the model rates higher
+// than the betting market does. Falls back to a legacy table for archived
+// payloads generated before structured factors existed.
+function FactorTable({ block, category, oddsMode, goFactor }) {
+  const [sortMode, setSortMode] = useState('score')
+  const [expanded, setExpanded] = useState(() => new Set())
+  const cols = useMemo(() => factorsForCategory(category), [category])
+  const hasFactors = useMemo(() => block.picks.some((p) => p.factors?.length), [block.picks])
+
+  // Ordinal "edge": within the market-priced subset, how many spots higher the
+  // model ranks a pick than the market does. Honest (rank-based, no fake
+  // probability) and surfaces undervalued names. Picks with no market sort last.
+  const rows = useMemo(() => {
+    const picks = block.picks
+    const priced = picks.filter((p) => p.marketPct != null)
+    const modelRank = new Map(priced.map((p, i) => [pickKey(p), i + 1])) // priced preserves score order
+    const byMarket = [...priced].sort((a, b) => b.marketPct - a.marketPct)
+    const marketRank = new Map(byMarket.map((p, i) => [pickKey(p), i + 1]))
+    const arr = picks.map((p) => {
+      const k = pickKey(p)
+      const edge = modelRank.has(k) ? marketRank.get(k) - modelRank.get(k) : null
+      return { p, edge }
+    })
+    if (sortMode === 'edge') arr.sort((a, b) => (b.edge ?? -Infinity) - (a.edge ?? -Infinity))
+    return arr
+  }, [block.picks, sortMode])
+
+  const anyMarket = useMemo(() => block.picks.some((p) => p.marketPct != null), [block.picks])
+
+  if (!hasFactors) return <LegacyRankTable block={block} oddsMode={oddsMode} />
+
+  const toggle = (key) => setExpanded((prev) => {
+    const next = new Set(prev)
+    if (next.has(key)) next.delete(key); else next.add(key)
+    return next
+  })
+
+  return (
+    <div className="ranked-table factor-table">
+      <div className="ranked-table-legend">
+        <span>
+          <strong>Factors</strong> — each column is a scoring input; click a header to learn what it means.
+          A <span className="legend-mono">~</span> marks an approximated value. Tap a row for the full breakdown.
+        </span>
+        {anyMarket && (
+          <span className="sort-toggle" role="group" aria-label="Sort mode">
+            <button
+              className={sortMode === 'score' ? 'active' : ''}
+              onClick={() => setSortMode('score')}
+            >Model score</button>
+            <button
+              className={sortMode === 'edge' ? 'active' : ''}
+              onClick={() => setSortMode('edge')}
+              title="Spots the model ranks a pick above the market"
+            >Edge vs market</button>
+          </span>
+        )}
+      </div>
+      <div className="factor-table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th className="sticky-col col-rank">#</th>
+              <th className="sticky-col col-player">Player</th>
+              {cols.map((f) => (
+                <th key={f.id} className={f.keyColumn ? 'key-col' : 'extra-col'}>
+                  <button className="factor-link" onClick={() => goFactor(f.id)} title={f.description}>
+                    {f.column}{f.proxy && <sup className="proxy-mark">~</sup>}
+                  </button>
+                </th>
+              ))}
+              <th className="col-score">{sortMode === 'edge' ? 'Edge' : 'Score'}</th>
+              <th className="col-market">Market</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ p, edge }) => {
+              const key = pickKey(p)
+              const fmap = Object.fromEntries((p.factors ?? []).map((x) => [x.id, x]))
+              const isOpen = expanded.has(key)
+              const spTbd = p.dataQuality && p.dataQuality.pitcherConfirmed === false
+              return (
+                <Fragment key={key}>
+                  <tr className={`factor-row ${isOpen ? 'open' : ''}`} onClick={() => toggle(key)}>
+                    <td className="rank sticky-col col-rank">{p.rank}</td>
+                    <td className="player sticky-col col-player">
+                      <span className="player-name">{p.playerName}</span>
+                      {p.lineupProjected && <span className="proj-tag" title="Lineup not yet posted">proj</span>}
+                      {spTbd && <span className="proj-tag sp-tbd" title="Opposing starter not confirmed — pitcher factors use league average">SP TBD</span>}
+                      <span className="row-meta">{[p.team, p.matchup].filter(Boolean).join(' · ')}</span>
+                    </td>
+                    {cols.map((f) => {
+                      const pf = fmap[f.id]
+                      const cls = [
+                        f.keyColumn ? 'key-col' : 'extra-col',
+                        pf?.neutral ? 'neutral-cell' : '',
+                        pf?.proxy ? 'proxy-cell' : '',
+                      ].filter(Boolean).join(' ')
+                      return <td key={f.id} className={cls}>{pf ? pf.display : '—'}</td>
+                    })}
+                    <td className="score">{sortMode === 'edge' ? formatEdge(edge) : p.scoreLabel}</td>
+                    <td className="col-market">{formatMarket(p.marketPct, p.marketOddsAmerican, oddsMode)}</td>
+                  </tr>
+                  {isOpen && (
+                    <tr className="factor-detail-row">
+                      <td colSpan={cols.length + 4}>
+                        <div className="factor-detail">
+                          {(p.factors ?? []).map((pf) => {
+                            const def = FACTORS[pf.id]
+                            return (
+                              <button
+                                key={pf.id}
+                                className="factor-detail-item"
+                                onClick={(e) => { e.stopPropagation(); goFactor(pf.id) }}
+                              >
+                                <span className="fd-name">{def?.name ?? pf.id}{pf.proxy && ' (approx)'}</span>
+                                <span className={`fd-val ${pf.neutral ? 'neutral' : ''}`}>
+                                  {pf.display}{pf.neutral && ' · n/a'}
+                                </span>
+                              </button>
+                            )
+                          })}
+                          {p.signals?.length > 0 && (
+                            <div className="fd-signals">{p.signals.join(' · ')}</div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// Legacy table for archived payloads predating structured factors.
+function LegacyRankTable({ block, oddsMode }) {
+  return (
+    <div className="ranked-table">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Player</th><th>Team</th><th>Matchup</th><th>Score</th><th>Market</th><th>Signals</th>
+          </tr>
+        </thead>
+        <tbody>
+          {block.picks.map((p) => (
+            <tr key={pickKey(p)}>
+              <td className="rank">{p.rank}</td>
+              <td className="player">
+                {p.playerName}
+                {p.lineupProjected && <span className="proj-tag" title="Lineup not yet posted">proj</span>}
+              </td>
+              <td>{p.team}</td>
+              <td>{p.matchup}</td>
+              <td className="score">{p.scoreLabel}</td>
+              <td>{formatMarket(p.marketPct, p.marketOddsAmerican, oddsMode)}</td>
+              <td className="signals">{p.signals?.length ? p.signals.join(' · ') : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 function App() {
@@ -207,6 +547,7 @@ function App() {
   const [path, setPath] = useState(() => window.location.pathname)
   const slug = useMemo(() => parseSlug(path), [path])
   const showAbout = useMemo(() => isAboutPath(path), [path])
+  const factorRoute = useMemo(() => parseFactorPath(path), [path])
 
   const loadPayload = useCallback(async (s) => {
     setLoading(true)
@@ -256,6 +597,15 @@ function App() {
     window.history.pushState({}, '', '/')
     setPath('/')
   }, [])
+
+  const goFactor = useCallback((id) => {
+    const nextPath = id ? `/factors/${id}` : '/factors'
+    window.history.pushState({}, '', nextPath)
+    setPath(nextPath)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [])
+
+  const goFactorsIndex = useCallback(() => goFactor(null), [goFactor])
 
   const promptAdminKey = useCallback(() => {
     const k = window.prompt('Admin key:')
@@ -308,10 +658,6 @@ function App() {
     }
   }, [showAbout])
 
-  if (showAbout) {
-    return <About onBack={goHome} />
-  }
-
   const block = useMemo(() => payload?.categories?.[activeCategory] ?? null, [payload, activeCategory])
 
   const isArchive = !!slug
@@ -326,6 +672,24 @@ function App() {
   // represents "go beyond what's already visible".
   const stripFloor = isoOffset(todayUtcIso(), -3)
   const olderDate = useMemo(() => datesAvailable.find((d) => d < stripFloor) ?? null, [datesAvailable, stripFloor])
+
+  // Standalone routes (rendered after all hooks to satisfy rules-of-hooks).
+  if (showAbout) {
+    return <About onBack={goHome} />
+  }
+  if (factorRoute?.index) {
+    return <FactorsIndex onBack={goHome} onPick={goFactor} />
+  }
+  if (factorRoute?.id) {
+    return (
+      <FactorPage
+        factorId={factorRoute.id}
+        payload={payload}
+        onBack={goHome}
+        onIndex={goFactorsIndex}
+      />
+    )
+  }
 
   return (
     <main className="app-shell">
@@ -376,12 +740,13 @@ function App() {
                 aria-label="Set admin key"
               >⋯</button>
             )}
+            <button className="button secondary" onClick={goFactorsIndex}>Factors</button>
             <button className="button secondary" onClick={goAbout}>About</button>
             <span className="eyebrow">Daily · MLB</span>
           </div>
         </div>
         <div className="hero-copy">
-          <h1>Daily MLB props, ranked. <em>Three days ahead.</em></h1>
+          <h1>Daily MLB props, ranked.</h1>
           <p>
             Seven ranked categories &mdash; Home Run, Hit, Total Bases, Total RBIs, Strikeouts,
             Total Outs, Game Total &mdash; rendered as shareable cards. Built from MLB Stats API
@@ -406,10 +771,10 @@ function App() {
         <summary>About this board</summary>
         <div className="about-content">
           <p>
-            LineDrive ranks the top MLB players (and games) across seven prop categories &mdash;
-            every day, three days ahead. Picks are produced by a heuristic model from public
-            data with no hand selection. The <strong>Market</strong> column shows OG.com&rsquo;s
-            implied probability when priced.
+            LineDrive ranks the top MLB players (and games) across seven prop categories
+            every day. Picks are produced by a heuristic model from public data with no hand
+            selection. The <strong>Market</strong> column shows OG.com&rsquo;s implied
+            probability when priced.
           </p>
           <p>
             <a href="/about" onClick={(e) => { e.preventDefault(); goAbout(); }}>
@@ -437,7 +802,7 @@ function App() {
               key={targetIso}
               className={`date-pill ${isActive ? 'active' : ''} ${disabled ? 'disabled' : ''}`}
               disabled={disabled}
-              onClick={() => navigate(offset === 0 ? null : { league: 'mlb', date: targetIso })}
+              onClick={() => navigate({ league: 'mlb', date: targetIso })}
               title={disabled ? 'No archive for this date' : ''}
             >
               <span className="date-pill-label">{dayLabel(targetIso)}</span>
@@ -445,6 +810,25 @@ function App() {
             </button>
           )
         })}
+        {(() => {
+          const b = block
+          const hasSettled = !!(b?.highlightSettledImages?.length || b?.leaderboardSettledImage)
+          if (!hasSettled) return null
+          return (
+            <div className="view-toggle date-strip-toggle" role="group" aria-label="Card view">
+              <button
+                className={`view-pill ${viewMode === 'picks' ? 'active' : ''}`}
+                onClick={() => setViewMode('picks')}
+                title="Show pre-game projection cards"
+              >Projections</button>
+              <button
+                className={`view-pill ${viewMode === 'results' ? 'active' : ''}`}
+                onClick={() => setViewMode('results')}
+                title="Show settled cards with results + $10 payout"
+              >Results</button>
+            </div>
+          )
+        })()}
         {olderDate && (
           <button
             className="date-pill secondary"
@@ -498,45 +882,24 @@ function App() {
                 const variantLabel = showResults ? 'Results' : 'Projections'
                 return (
                   <>
-                    {hasSettled && (
-                      <div className="view-toggle-row">
-                        <div className="view-toggle" role="group" aria-label="Card view">
-                          <button
-                            className={`view-pill ${viewMode === 'picks' ? 'active' : ''}`}
-                            onClick={() => setViewMode('picks')}
-                            title="Show pre-game projection cards"
-                          >Projections</button>
-                          <button
-                            className={`view-pill ${viewMode === 'results' ? 'active' : ''}`}
-                            onClick={() => setViewMode('results')}
-                            title="Show settled cards with results + $10 payout"
-                          >Results</button>
-                        </div>
-                      </div>
-                    )}
               <section className="board-and-highlights">
                 <div className="board-col">
                   {leaderboardFile ? (
-                    <a
-                      className="board-image-link"
-                      href={downloadUrl(payload, leaderboardFile, dlName(activeCategory, payload.date, variantSuffix.replace(/^-/, '')))}
-                      download={dlName(activeCategory, payload.date, variantSuffix.replace(/^-/, ''))}
-                    >
-                      <img
-                        src={imgUrl(payload, leaderboardFile)}
-                        alt={`${CATEGORY_LABELS[activeCategory]} leaderboard (${variantLabel})`}
-                        className="leaderboard-image"
-                      />
-                    </a>
+                    <img
+                      src={imgUrl(payload, leaderboardFile)}
+                      alt={`${CATEGORY_LABELS[activeCategory]} leaderboard (${variantLabel})`}
+                      className="leaderboard-image"
+                    />
                   ) : (
                     <div className="image-placeholder">
                       Leaderboard not rendered for this category.
                     </div>
                   )}
-                  <DownloadButton
+                  <ShareRow
                     payload={payload}
                     filename={leaderboardFile}
                     baseName={dlName(activeCategory, payload.date, variantSuffix.replace(/^-/, '')).replace(/\.png$/, '')}
+                    context={{ kind: 'leaderboard', category: activeCategory }}
                   />
                 </div>
 
@@ -551,27 +914,36 @@ function App() {
                               const suffix = `top${i + 1}${variantSuffix}`
                               const baseName = dlName(activeCategory, payload.date, suffix).replace(/\.png$/, '')
                               const jpgName = `${baseName}.jpg`
-                              const onClick = (e) => {
+                              const srcUrl = downloadUrl(payload, filename, jpgName)
+                              const { text: miniText, url: miniUrl } = composeShareText({
+                                kind: 'pick',
+                                payload,
+                                category: activeCategory,
+                              })
+                              const onDownload = (e) => {
                                 e.preventDefault()
-                                downloadAsBlob(downloadUrl(payload, filename, jpgName), jpgName, { format: 'jpeg' })
+                                downloadAsBlob(srcUrl, jpgName, { format: 'jpeg' })
                               }
                               return (
                                 <div key={filename} className="highlight-card-mini">
-                                  <a href={downloadUrl(payload, filename, jpgName)} onClick={onClick}>
-                                    <img
-                                      src={imgUrl(payload, filename)}
-                                      alt={`${CATEGORY_LABELS[activeCategory]} #${i + 1}${showResults ? ' (settled)' : ''}`}
-                                    />
-                                  </a>
-                                  <a
-                                    className="highlight-mini-download"
-                                    href={downloadUrl(payload, filename, jpgName)}
-                                    onClick={onClick}
-                                    title={`Download ${jpgName}`}
-                                  >
+                                  <img
+                                    src={imgUrl(payload, filename)}
+                                    alt={`${CATEGORY_LABELS[activeCategory]} #${i + 1}${showResults ? ' (settled)' : ''}`}
+                                  />
+                                  <div className="highlight-mini-actions">
                                     <span className="highlight-mini-rank">#{i + 1}</span>
-                                    <span className="highlight-mini-name">Download JPEG</span>
-                                  </a>
+                                    <button
+                                      type="button"
+                                      className="mini-icon-btn"
+                                      onClick={onDownload}
+                                      title={`Download ${jpgName}`}
+                                      aria-label="Download JPEG"
+                                    >
+                                      <DownloadIcon />
+                                    </button>
+                                    <TweetButton text={miniText} url={miniUrl} compact />
+                                    <ShareButton srcUrl={srcUrl} jpgName={jpgName} text={miniText} title="LineDrive" compact />
+                                  </div>
                                 </div>
                               )
                             })}
@@ -592,16 +964,11 @@ function App() {
 
               <section className="full-table-section">
                 <h3>Full ranking · {CATEGORY_LABELS[activeCategory]}</h3>
-                <div className="ranked-table">
-                  <div className="ranked-table-legend">
-                    <strong>Score</strong>{' '}
-                    {activeCategory === 'k' && '= expected strikeouts. Higher means more K&rsquo;s.'}
-                    {activeCategory === 'outs' && '= expected outs recorded. Higher means a longer outing.'}
-                    {activeCategory === 'game' && '= expected total runs. Higher means more scoring.'}
-                    {!['k', 'outs', 'game'].includes(activeCategory) &&
-                      <>= z-scored composite signal. <span className="legend-mono">0</span> is league average, <span className="legend-mono">+1</span> ≈ one standard deviation above. Higher = stronger pick.</>}
-                  </div>
-                  {activeCategory === 'game' ? (
+                {activeCategory === 'game' ? (
+                  <div className="ranked-table">
+                    <div className="ranked-table-legend">
+                      <strong>Score</strong> = expected total runs. Higher means more scoring.
+                    </div>
                     <table>
                       <thead>
                         <tr>
@@ -628,44 +995,15 @@ function App() {
                         ))}
                       </tbody>
                     </table>
-                  ) : (
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>Player</th>
-                          <th>Team</th>
-                          <th>Matchup</th>
-                          <th>Score</th>
-                          <th>Market</th>
-                          <th>Signals</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {block.picks.map((p) => {
-                          return (
-                            <tr key={`${p.playerId}-${p.rank}`}>
-                              <td className="rank">{p.rank}</td>
-                              <td className="player">
-                                {p.playerName}
-                                {p.lineupProjected && (
-                                  <span className="proj-tag" title="Lineup not yet posted">proj</span>
-                                )}
-                              </td>
-                              <td>{p.team}</td>
-                              <td>{p.matchup}</td>
-                              <td className="score">{p.scoreLabel}</td>
-                                <td>{formatMarket(p.marketPct, p.marketOddsAmerican, oddsMode)}</td>
-                              <td className="signals">
-                                {p.signals?.length ? p.signals.join(' · ') : '—'}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <FactorTable
+                    block={block}
+                    category={activeCategory}
+                    oddsMode={oddsMode}
+                    goFactor={goFactor}
+                  />
+                )}
               </section>
             </>
           )}
@@ -680,11 +1018,20 @@ function App() {
               <div className="game-cards-grid">
                 {payload.games.filter((g) => g.cardImage).map((g) => {
                   const name = dlName('game', payload.date, `${g.awayAbbrev}-${g.homeAbbrev}`.toLowerCase())
+                  const srcUrl = downloadUrl(payload, g.cardImage, name)
+                  const { text: gText, url: gUrl } = composeShareText({
+                    kind: 'game',
+                    payload,
+                    game: g,
+                    category: 'game',
+                  })
+                  const onDownload = (e) => {
+                    e.preventDefault()
+                    downloadAsBlob(srcUrl, name, { format: 'jpeg' })
+                  }
                   return (
                     <div key={g.gamePk} className="game-card">
-                      <a href={downloadUrl(payload, g.cardImage, name)}>
-                        <img src={imgUrl(payload, g.cardImage)} alt={`${g.awayAbbrev} @ ${g.homeAbbrev}`} />
-                      </a>
+                      <img src={imgUrl(payload, g.cardImage)} alt={`${g.awayAbbrev} @ ${g.homeAbbrev}`} />
                       <div className="game-card-meta">
                         <div className="game-card-title">{g.awayAbbrev} @ {g.homeAbbrev}</div>
                         <div className="game-card-sub">
@@ -692,9 +1039,11 @@ function App() {
                           {g.marketLine !== null && ` · OG O/U ${g.marketLine}`}
                         </div>
                         <div className="game-card-actions">
-                          <a className="button secondary" href={downloadUrl(payload, g.cardImage, name)}>
+                          <button type="button" className="button secondary" onClick={onDownload}>
                             Download
-                          </a>
+                          </button>
+                          <TweetButton text={gText} url={gUrl} />
+                          <ShareButton srcUrl={srcUrl} jpgName={name} text={gText} title="LineDrive" />
                           {g.ogUrl && (
                             <a className="button secondary" href={g.ogUrl} target="_blank" rel="noreferrer">
                               OG market ↗

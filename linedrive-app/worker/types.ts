@@ -111,6 +111,23 @@ export interface PickResult {
   payoutDollars: number | null; // $10 stake profit (positive for win, -10 for loss, null if no odds)
 }
 
+// A single scoring factor's contribution to a pick, surfaced for the factor
+// table and per-factor explainer pages. The `id` is the contract key shared
+// with the frontend registry (src/factors.js) and worker/factors.ts.
+export interface PickFactor {
+  id: string;            // "iso", "parkHr", "pitcherHr9", ...
+  value: number;         // raw underlying stat (park.hrFactor=92, iso=0.241)
+  contribution: number;  // signed weight×z added to the score (0 for multiplicative scorers)
+  display: string;       // pre-formatted cell, e.g. "92", ".241", "1.6 HR/9"
+  neutral?: boolean;     // value was defaulted to a league baseline (missing data)
+  proxy?: boolean;       // value is an approximation, not a directly-measured stat
+}
+
+export interface DataQuality {
+  pitcherConfirmed: boolean;   // false → opponent SP unknown, pitcher factors neutral
+  neutralFactorIds: string[];  // which factors fell back to a baseline
+}
+
 export interface Pick {
   rank: number;
   playerId: number;
@@ -120,6 +137,8 @@ export interface Pick {
   score: number;
   scoreLabel: string;
   signals: string[];
+  factors?: PickFactor[];            // structured per-factor breakdown (player props only)
+  dataQuality?: DataQuality;         // data-completeness flags for this pick
   marketPct: number | null;          // OG implied probability, 0..1
   marketOddsAmerican: number | null; // Yes-side American odds (-110, +260, ...)
   marketLine: string | null;         // Pre-formatted "15% / +566" label for card display
@@ -175,4 +194,5 @@ export interface Env {
   ASSETS: Fetcher;
   ADMIN_KEY: string;
   OG_API_KEY: string;
+  RESEND_API_KEY: string;
 }

@@ -124,7 +124,7 @@ export async function renderHighlights(
     if (!picks || picks.length === 0) continue;
     const top = cat === "game"
       ? pickTopGamesByDelta(picks, HIGHLIGHTS_PER_CATEGORY)
-      : picks.slice(0, HIGHLIGHTS_PER_CATEGORY);
+      : pickTopPlayersByEdge(picks, HIGHLIGHTS_PER_CATEGORY);
     for (let i = 0; i < top.length; i++) {
       const filename = `highlight-${cat}-${i + 1}.png`;
       const node = cat === "game"
@@ -168,6 +168,25 @@ function pickTopGamesByDelta(picks: Pick[], n: number): Pick[] {
   const anyLine = scored.some((s) => s.delta >= 0);
   if (!anyLine) return picks.slice(0, n);
   scored.sort((a, b) => b.delta - a.delta);
+  return scored.slice(0, n).map((s) => s.pick);
+}
+
+// Pick the n biggest-edge player props from the top 10 model picks: model rank
+// high (rank index low) with OG implied % low = OG hasn't caught up to the
+// model. Edge = (10 - rankIndex) − (marketPct * 10) so both terms are on the
+// 0..10 scale. Picks without an OG market drop to the bottom; if the whole top
+// 10 lacks markets we fall back to straight model rank.
+function pickTopPlayersByEdge(picks: Pick[], n: number): Pick[] {
+  const top10 = picks.slice(0, 10);
+  const scored = top10.map((p, i) => {
+    if (p.marketPct === null || p.marketPct === undefined) {
+      return { pick: p, edge: Number.NEGATIVE_INFINITY };
+    }
+    return { pick: p, edge: (10 - i) - p.marketPct * 10 };
+  });
+  const anyMarket = scored.some((s) => s.edge !== Number.NEGATIVE_INFINITY);
+  if (!anyMarket) return picks.slice(0, n);
+  scored.sort((a, b) => b.edge - a.edge);
   return scored.slice(0, n).map((s) => s.pick);
 }
 

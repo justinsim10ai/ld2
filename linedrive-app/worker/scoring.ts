@@ -2,8 +2,11 @@ import type {
   BatterContext,
   PitcherContext,
   Pick,
+  PickFactor,
+  DataQuality,
   Category,
 } from "./types";
+import { FACTORS } from "./factors";
 
 const WEIGHTS = {
   hr: {
@@ -59,6 +62,58 @@ interface Scored<TCtx> {
   ctx: TCtx;
   score: number;
   signals: string[];
+  factors: PickFactor[];
+  dataQuality: DataQuality;
+}
+
+// Accumulates the per-factor contributions of a weighted-z scorer so they can
+// be surfaced on each Pick. The batter weight tables all sum to 1.0, so when a
+// factor's value is missing (e.g. opponent pitcher unknown → its z is 0), we
+// drop it from the weighted average and renormalize the remaining weights.
+// This keeps the score on the same scale instead of silently depressing picks
+// that lack data, and preserves the invariant: sum(contributions) === score.
+function factorBuilder() {
+  const factors: PickFactor[] = [];
+  const neutralFactorIds: string[] = [];
+  let rawScore = 0;
+  let neutralWeight = 0;
+
+  function add(
+    id: string,
+    raw: number,
+    z: number,
+    weight: number,
+    display: string,
+    opts?: { neutral?: boolean; proxy?: boolean },
+  ): void {
+    const contribution = weight * z;
+    rawScore += contribution;
+    const f: PickFactor = { id, value: raw, contribution, display };
+    if (opts?.neutral) {
+      f.neutral = true;
+      neutralFactorIds.push(id);
+      neutralWeight += weight;
+    }
+    if (opts?.proxy) f.proxy = true;
+    factors.push(f);
+  }
+
+  function finalize(pitcherConfirmed: boolean): {
+    score: number;
+    factors: PickFactor[];
+    dataQuality: DataQuality;
+  } {
+    const denom = 1 - neutralWeight;
+    const k = denom > 0.001 ? 1 / denom : 1;
+    if (k !== 1) for (const f of factors) f.contribution *= k;
+    return {
+      score: rawScore * k,
+      factors,
+      dataQuality: { pitcherConfirmed, neutralFactorIds },
+    };
+  }
+
+  return { add, finalize };
 }
 
 export function scoreHomeRun(ctx: BatterContext): Scored<BatterContext> {
@@ -66,29 +121,34 @@ export function scoreHomeRun(ctx: BatterContext): Scored<BatterContext> {
   const b = ctx.batter;
   const p = ctx.opponentPitcher;
   const park = ctx.park;
+  const fb = factorBuilder();
+  const pitcherConfirmed = !!p;
 
   const iso = b.isoSeason ?? LEAGUE_BASELINES.iso;
   const isoZ = (iso - LEAGUE_BASELINES.iso) / 0.06;
+  fb.add("iso", iso, isoZ, w.isoOrHrPerPa, FACTORS.iso.format(iso), { neutral: b.isoSeason == null });
 
   const xSlg = b.xSlgSeason ?? LEAGUE_BASELINES.xSlg;
   const xSlgZ = (xSlg - LEAGUE_BASELINES.xSlg) / 0.08;
+  fb.add("xSlg", xSlg, xSlgZ, w.xSlg, FACTORS.xSlg.format(xSlg), { neutral: b.xSlgSeason == null });
 
   const pitcherHr9 = p?.hr9Season ?? LEAGUE_BASELINES.pitcherHr9;
   const pitcherHr9Z = (pitcherHr9 - LEAGUE_BASELINES.pitcherHr9) / 0.5;
+  fb.add("pitcherHr9", pitcherHr9, pitcherHr9Z, w.pitcherHr9, FACTORS.pitcherHr9.format(pitcherHr9), { neutral: !pitcherConfirmed });
 
   const parkZ = (park.hrFactor - 100) / 10;
-  const wind = windCarry(ctx);
-  const recentZ = Math.min(b.hrLast30, 12) / 4 - 0.5;
-  const handBonus = handednessBonus(b.bats, p?.throws);
+  fb.add("parkHr", park.hrFactor, parkZ, w.parkFactor, FACTORS.parkHr.format(park.hrFactor));
 
-  const score =
-    w.isoOrHrPerPa * isoZ +
-    w.xSlg * xSlgZ +
-    w.pitcherHr9 * pitcherHr9Z +
-    w.parkFactor * parkZ +
-    w.windCarry * wind.value +
-    w.recent * recentZ +
-    w.handedness * handBonus;
+  const wind = windCarry(ctx);
+  fb.add("windCarry", wind.value, wind.value, w.windCarry, FACTORS.windCarry.format(wind.value));
+
+  const recentZ = Math.min(b.hrLast30, 12) / 4 - 0.5;
+  fb.add("recentHr", b.hrLast30, recentZ, w.recent, FACTORS.recentHr.format(b.hrLast30));
+
+  const handBonus = handednessBonus(b.bats, p?.throws);
+  fb.add("handedness", handBonus, handBonus, w.handedness, FACTORS.handedness.format(handBonus));
+
+  const { score, factors, dataQuality } = fb.finalize(pitcherConfirmed);
 
   const signals: string[] = [];
   if (iso >= 0.220) signals.push(`Elite power (ISO ${pad3(iso)})`);
@@ -102,16 +162,16 @@ export function scoreHomeRun(ctx: BatterContext): Scored<BatterContext> {
   if (handBonus > 0) signals.push(`Favorable platoon split`);
   const vs = vsPitcherSignal(ctx);
   if (vs) signals.push(vs);
-  return { ctx, score, signals };
+  return { ctx, score, signals, factors, dataQuality };
 }
 
 function vsPitcherSignal(ctx: BatterContext): string | null {
   const v = ctx.vsPitcher;
-  if (!v || v.ab < 3) return null;  // skip tiny samples
+  if (!v || v.ab < 6) return null;  // skip tiny samples — noisy below ~6 AB
   const parts: string[] = [`${v.h}-for-${v.ab}`];
   if (v.hr > 0) parts.push(`${v.hr} HR`);
   if (v.k > 0) parts.push(`${v.k} K`);
-  return `${parts.join(", ")} vs SP (career)`;
+  return `${parts.join(", ")} vs SP (career, small sample)`;
 }
 
 export function scoreHit(ctx: BatterContext): Scored<BatterContext> {
@@ -120,28 +180,32 @@ export function scoreHit(ctx: BatterContext): Scored<BatterContext> {
   const p = ctx.opponentPitcher;
   const park = ctx.park;
 
+  const fb = factorBuilder();
+  const pitcherConfirmed = !!p;
+
   const xBa = b.xBaSeason ?? LEAGUE_BASELINES.xBa;
   const xBaZ = (xBa - LEAGUE_BASELINES.xBa) / 0.03;
+  fb.add("xBa", xBa, xBaZ, w.xBa, FACTORS.xBa.format(xBa), { neutral: b.xBaSeason == null });
 
   const ba30 = b.ba30d ?? LEAGUE_BASELINES.ba;
   const ba30Z = (ba30 - LEAGUE_BASELINES.ba) / 0.04;
+  fb.add("ba30d", ba30, ba30Z, w.ba30d, FACTORS.ba30d.format(ba30), { neutral: b.ba30d == null });
 
   const pitcherXBa = p?.xBaAgainstSeason ?? LEAGUE_BASELINES.pitcherXBaAgainst;
   const pitcherXBaZ = (pitcherXBa - LEAGUE_BASELINES.pitcherXBaAgainst) / 0.03;
+  fb.add("pitcherXBaAgainst", pitcherXBa, pitcherXBaZ, w.pitcherXBaAgainst, FACTORS.pitcherXBaAgainst.format(pitcherXBa), { neutral: !pitcherConfirmed });
 
   const slot = ctx.lineupSlot ?? 9;
   const slotBonus = slot <= 3 ? 1 : slot <= 6 ? 0.3 : -0.5;
+  fb.add("lineupSlot", slot, slotBonus, w.lineupSlot, FACTORS.lineupSlot.format(slot));
 
   const handBonus = handednessBonus(b.bats, p?.throws);
-  const parkZ = (park.hrFactor - 100) / 30;
+  fb.add("handedness", handBonus, handBonus, w.handedness, FACTORS.handedness.format(handBonus));
 
-  const score =
-    w.xBa * xBaZ +
-    w.ba30d * ba30Z +
-    w.pitcherXBaAgainst * pitcherXBaZ +
-    w.lineupSlot * slotBonus +
-    w.handedness * handBonus +
-    w.park * parkZ;
+  const parkZ = (park.hrFactor - 100) / 30;
+  fb.add("parkHr", park.hrFactor, parkZ, w.park, FACTORS.parkHr.format(park.hrFactor));
+
+  const { score, factors, dataQuality } = fb.finalize(pitcherConfirmed);
 
   const signals: string[] = [];
   if (xBa >= LEAGUE_BASELINES.xBa + 0.025) signals.push(`xBA ${pad3(xBa)} (top-tier contact)`);
@@ -152,7 +216,7 @@ export function scoreHit(ctx: BatterContext): Scored<BatterContext> {
   if (park.hrFactor >= 105) signals.push(`Hitter-friendly ballpark`);
   const vs = vsPitcherSignal(ctx);
   if (vs) signals.push(vs);
-  return { ctx, score, signals };
+  return { ctx, score, signals, factors, dataQuality };
 }
 
 export function scoreStrikeouts(ctx: PitcherContext): Scored<PitcherContext> {
@@ -165,6 +229,16 @@ export function scoreStrikeouts(ctx: PitcherContext): Scored<PitcherContext> {
 
   const expectedK = (k9 / 9) * ip * oppRel * parkMul;
 
+  // Expected strikeouts is a product, not a weighted z-sum, so factors are
+  // display-only (contribution 0) — they explain the inputs, not an additive split.
+  const factors: PickFactor[] = [
+    { id: "kRate", value: k9, contribution: 0, display: FACTORS.kRate.format(k9), neutral: p.k9Last30 == null && p.k9Season == null },
+    { id: "expectedIp", value: ip, contribution: 0, display: FACTORS.expectedIp.format(ip) },
+    { id: "oppKRate", value: oppRel, contribution: 0, display: FACTORS.oppKRate.format(oppRel), neutral: ctx.opponentTeamKPctRelLeague == null },
+    { id: "parkK", value: park.kFactor, contribution: 0, display: FACTORS.parkK.format(park.kFactor) },
+  ];
+  const dataQuality: DataQuality = { pitcherConfirmed: true, neutralFactorIds: factors.filter((f) => f.neutral).map((f) => f.id) };
+
   const signals: string[] = [];
   signals.push(`Expected IP: ${ip.toFixed(1)}`);
   signals.push(`K/9 (last 30): ${k9.toFixed(1)}`);
@@ -173,7 +247,7 @@ export function scoreStrikeouts(ctx: PitcherContext): Scored<PitcherContext> {
   if (parkMul > 1.005) signals.push(`Slight K-friendly park`);
   if (parkMul < 0.995) signals.push(`Slight K-suppressing park`);
 
-  return { ctx, score: expectedK, signals };
+  return { ctx, score: expectedK, signals, factors, dataQuality };
 }
 
 export function scoreTotalBases(ctx: BatterContext): Scored<BatterContext> {
@@ -182,29 +256,34 @@ export function scoreTotalBases(ctx: BatterContext): Scored<BatterContext> {
   const p = ctx.opponentPitcher;
   const park = ctx.park;
 
+  const fb = factorBuilder();
+  const pitcherConfirmed = !!p;
+
   const xSlg = b.xSlgSeason ?? LEAGUE_BASELINES.xSlg;
   const xSlgZ = (xSlg - LEAGUE_BASELINES.xSlg) / 0.08;
+  fb.add("xSlg", xSlg, xSlgZ, w.xSlg, FACTORS.xSlg.format(xSlg), { neutral: b.xSlgSeason == null });
 
   const iso = b.isoSeason ?? LEAGUE_BASELINES.iso;
   const isoZ = (iso - LEAGUE_BASELINES.iso) / 0.06;
+  fb.add("iso", iso, isoZ, w.iso, FACTORS.iso.format(iso), { neutral: b.isoSeason == null });
 
-  // We don't fetch pitcher xSLG-against; fall back to xBA-against as a proxy
+  // We don't fetch pitcher xSLG-against; approximate it from xBA-against (+0.15).
+  // Flagged proxy so the UI/factor page disclose it's an approximation.
   const pitcherSlgAgainst = (p?.xBaAgainstSeason ?? LEAGUE_BASELINES.pitcherXBaAgainst) + 0.15;
   const pitcherSlgZ = (pitcherSlgAgainst - LEAGUE_BASELINES.pitcherXSlgAgainst) / 0.08;
+  fb.add("pitcherXSlgAgainst", pitcherSlgAgainst, pitcherSlgZ, w.pitcherXSlgAgainst, FACTORS.pitcherXSlgAgainst.format(pitcherSlgAgainst), { neutral: !pitcherConfirmed, proxy: true });
 
   const slot = ctx.lineupSlot ?? 9;
   const slotBonus = slot <= 5 ? 1 : slot <= 7 ? 0.2 : -0.5;
+  fb.add("lineupSlot", slot, slotBonus, w.lineupSlot, FACTORS.lineupSlot.format(slot));
 
   const parkZ = (park.hrFactor - 100) / 12;
-  const handBonus = handednessBonus(b.bats, p?.throws);
+  fb.add("parkHr", park.hrFactor, parkZ, w.park, FACTORS.parkHr.format(park.hrFactor));
 
-  const score =
-    w.xSlg * xSlgZ +
-    w.iso * isoZ +
-    w.pitcherXSlgAgainst * pitcherSlgZ +
-    w.lineupSlot * slotBonus +
-    w.park * parkZ +
-    w.handedness * handBonus;
+  const handBonus = handednessBonus(b.bats, p?.throws);
+  fb.add("handedness", handBonus, handBonus, w.handedness, FACTORS.handedness.format(handBonus));
+
+  const { score, factors, dataQuality } = fb.finalize(pitcherConfirmed);
 
   const signals: string[] = [];
   if (xSlg >= 0.500) signals.push(`xSLG ${pad3(xSlg)} (elite slug)`);
@@ -214,7 +293,7 @@ export function scoreTotalBases(ctx: BatterContext): Scored<BatterContext> {
   if (handBonus > 0) signals.push(`Favorable platoon split`);
   const vs = vsPitcherSignal(ctx);
   if (vs) signals.push(vs);
-  return { ctx, score, signals };
+  return { ctx, score, signals, factors, dataQuality };
 }
 
 export function scoreTotalRbis(ctx: BatterContext): Scored<BatterContext> {
@@ -223,28 +302,33 @@ export function scoreTotalRbis(ctx: BatterContext): Scored<BatterContext> {
   const p = ctx.opponentPitcher;
   const park = ctx.park;
 
+  const fb = factorBuilder();
+  const pitcherConfirmed = !!p;
+
   const xSlg = b.xSlgSeason ?? LEAGUE_BASELINES.xSlg;
   const xSlgZ = (xSlg - LEAGUE_BASELINES.xSlg) / 0.08;
+  fb.add("xSlg", xSlg, xSlgZ, w.xSlg, FACTORS.xSlg.format(xSlg), { neutral: b.xSlgSeason == null });
+
   const iso = b.isoSeason ?? LEAGUE_BASELINES.iso;
   const isoZ = (iso - LEAGUE_BASELINES.iso) / 0.06;
+  fb.add("iso", iso, isoZ, w.iso, FACTORS.iso.format(iso), { neutral: b.isoSeason == null });
 
   // Lineup-slot RBI multiplier (cleanup spots get more chances)
   const slot = ctx.lineupSlot ?? 9;
   const slotRbi = slot === 3 ? 1.4 : slot === 4 ? 1.5 : slot === 5 ? 1.2 : slot === 2 ? 0.5 : slot === 6 ? 0.6 : slot === 1 ? 0.2 : -0.3;
+  fb.add("lineupRbi", slot, slotRbi, w.lineupRbiBonus, FACTORS.lineupRbi.format(slot));
 
   const pitcherXBa = p?.xBaAgainstSeason ?? LEAGUE_BASELINES.pitcherXBaAgainst;
   const pitcherXBaZ = (pitcherXBa - LEAGUE_BASELINES.pitcherXBaAgainst) / 0.03;
+  fb.add("pitcherXBaAgainst", pitcherXBa, pitcherXBaZ, w.pitcherXBaAgainst, FACTORS.pitcherXBaAgainst.format(pitcherXBa), { neutral: !pitcherConfirmed });
 
   const parkZ = (park.hrFactor - 100) / 14;
-  const handBonus = handednessBonus(b.bats, p?.throws);
+  fb.add("parkHr", park.hrFactor, parkZ, w.park, FACTORS.parkHr.format(park.hrFactor));
 
-  const score =
-    w.xSlg * xSlgZ +
-    w.iso * isoZ +
-    w.lineupRbiBonus * slotRbi +
-    w.pitcherXBaAgainst * pitcherXBaZ +
-    w.park * parkZ +
-    w.handedness * handBonus;
+  const handBonus = handednessBonus(b.bats, p?.throws);
+  fb.add("handedness", handBonus, handBonus, w.handedness, FACTORS.handedness.format(handBonus));
+
+  const { score, factors, dataQuality } = fb.finalize(pitcherConfirmed);
 
   const signals: string[] = [];
   if (slot >= 3 && slot <= 5) signals.push(`Cleanup-zone slot (#${slot})`);
@@ -254,19 +338,23 @@ export function scoreTotalRbis(ctx: BatterContext): Scored<BatterContext> {
   if (handBonus > 0) signals.push(`Favorable platoon split`);
   const vs = vsPitcherSignal(ctx);
   if (vs) signals.push(vs);
-  return { ctx, score, signals };
+  return { ctx, score, signals, factors, dataQuality };
 }
 
 export function scoreTotalOuts(ctx: PitcherContext): Scored<PitcherContext> {
   const p = ctx.pitcher;
   const ip = p.expectedIp || 5.5;
   const expectedOuts = ip * 3;
+  const factors: PickFactor[] = [
+    { id: "expectedIp", value: ip, contribution: 0, display: FACTORS.expectedIp.format(ip) },
+  ];
+  const dataQuality: DataQuality = { pitcherConfirmed: true, neutralFactorIds: [] };
   const signals: string[] = [];
   signals.push(`Expected IP: ${ip.toFixed(1)}`);
   signals.push(`Expected outs: ${expectedOuts.toFixed(1)}`);
   if (p.k9Last30 && p.k9Last30 >= 10) signals.push(`Power arm (K/9 ${p.k9Last30.toFixed(1)})`);
   if (p.ipSeason && p.ipSeason >= 80) signals.push(`Durable workload (${p.ipSeason} IP this season)`);
-  return { ctx, score: expectedOuts, signals };
+  return { ctx, score: expectedOuts, signals, factors, dataQuality };
 }
 
 export interface GameScoringContext {
@@ -411,6 +499,8 @@ function batterToPick(s: Scored<BatterContext>, rank: number): Pick {
     score: round2(s.score),
     scoreLabel: formatScoreLabel(s.score),
     signals: s.signals.slice(0, 4),
+    factors: s.factors,
+    dataQuality: s.dataQuality,
     marketPct: null,
     marketOddsAmerican: null,
     marketLine: null,
@@ -431,6 +521,8 @@ function pitcherToPick(s: Scored<PitcherContext>, rank: number, unit: string): P
     score: round1(s.score),
     scoreLabel: `${s.score.toFixed(1)} ${unit}`,
     signals: s.signals.slice(0, 4),
+    factors: s.factors,
+    dataQuality: s.dataQuality,
     marketPct: null,
     marketOddsAmerican: null,
     marketLine: null,

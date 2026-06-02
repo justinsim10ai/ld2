@@ -2,6 +2,7 @@ import type { Category, DailyPayload, Env, League, Pick, PickResult } from "./ty
 import { fetchHitterResults, fetchPitcherResults } from "./sources/mlbResult";
 import type { HitterGameResult, PitcherGameResult } from "./sources/mlbResult";
 import { renderSettledHighlights, renderSettledLeaderboards } from "./render";
+import { writeArchiveAndMaybeAdvanceLatest } from "./pipeline";
 
 const LEAGUE: League = "mlb";
 
@@ -63,17 +64,7 @@ export async function settlePayload(env: Env, dateIso: string): Promise<{ outcom
     }
   }
 
-  const json = JSON.stringify(payload);
-  const todayUtc = new Date(Date.now()).toISOString().slice(0, 10);
-  const yesterdayUtc = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
-  const writes: Promise<void>[] = [
-    env.LINEDRIVE_KV.put(archiveKey, json, { expirationTtl: 60 * 60 * 24 * 90 }),
-  ];
-  if (dateIso === todayUtc || dateIso === yesterdayUtc) {
-    writes.push(env.LINEDRIVE_KV.put(`latest:${LEAGUE}`, json));
-    writes.push(env.LINEDRIVE_KV.put("linedrive:today", json));
-  }
-  await Promise.all(writes);
+  await writeArchiveAndMaybeAdvanceLatest(env, payload);
 
   const outcome: SettlementOutcome = {
     date: dateIso,
@@ -119,18 +110,7 @@ export async function renderAndPersistSettled(env: Env, payload: DailyPayload): 
     rendered += list.length;
   }
 
-  const archiveKey = `r:${LEAGUE}:${payload.date}`;
-  const json = JSON.stringify(payload);
-  const todayUtc = new Date(Date.now()).toISOString().slice(0, 10);
-  const yesterdayUtc = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
-  const writes: Promise<void>[] = [
-    env.LINEDRIVE_KV.put(archiveKey, json, { expirationTtl: 60 * 60 * 24 * 90 }),
-  ];
-  if (payload.date === todayUtc || payload.date === yesterdayUtc) {
-    writes.push(env.LINEDRIVE_KV.put(`latest:${LEAGUE}`, json));
-    writes.push(env.LINEDRIVE_KV.put("linedrive:today", json));
-  }
-  await Promise.all(writes);
+  await writeArchiveAndMaybeAdvanceLatest(env, payload);
 
   return { rendered, notes: [`rendered ${rendered} settled PNGs`] };
 }

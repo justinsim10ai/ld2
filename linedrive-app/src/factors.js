@@ -1,0 +1,278 @@
+// Frontend mirror of worker/factors.ts, keyed by the same `id` strings (the
+// worker↔frontend contract). Adds the prose the worker never needs: a one-line
+// `description` for tooltips/column help and a `longExplanation` (array of
+// paragraphs) for the per-factor explainer pages.
+//
+// Each pick already carries a pre-formatted `display` per factor from the
+// worker, so the table reads `pick.factors[i].display` directly. `format` here
+// is only used for the "today's leaders" lists on factor pages.
+
+const avg3 = (v) => v.toFixed(3).replace(/^0/, '').replace(/^-0/, '-')
+
+export const FACTORS = {
+  iso: {
+    id: 'iso',
+    column: 'ISO',
+    name: 'Isolated Power',
+    categories: ['hr', 'tb', 'rbi'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: avg3,
+    description: 'Extra bases per at-bat (SLG minus AVG). Pure power, with singles stripped out.',
+    longExplanation: [
+      'Isolated Power (ISO) is slugging percentage minus batting average — it measures only the extra-base portion of a hitter’s production. A player who hits a lot of singles can have a high average but a low ISO; a player who hits doubles and home runs will have a high ISO.',
+      'League average ISO sits around .155. We z-score each hitter against that baseline, so .220+ reads as elite power and anything under ~.120 is well below average.',
+      'ISO drives the Home Run, Total Bases, and RBI models because all three reward extra-base contact. Higher is better.',
+    ],
+  },
+  xSlg: {
+    id: 'xSlg',
+    column: 'xSLG',
+    name: 'Expected Slugging',
+    categories: ['hr', 'tb', 'rbi'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: avg3,
+    description: 'Slugging the hitter “earned” based on contact quality — strips out luck and defense.',
+    longExplanation: [
+      'Expected Slugging (xSLG) is computed by MLB from the launch speed and angle of every batted ball. It answers: given how hard and at what angle this hitter makes contact, what slugging percentage should they have?',
+      'Because it’s built from contact quality rather than outcomes, xSLG cuts through small-sample luck and the noise of where balls happen to land. A hitter scorching the ball into outs will have a high xSLG even if their actual slugging hasn’t caught up yet.',
+      'League average is roughly .395. We z-score against that. Higher is better.',
+    ],
+  },
+  xBa: {
+    id: 'xBa',
+    column: 'xBA',
+    name: 'Expected Batting Average',
+    categories: ['hit'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: avg3,
+    description: 'Hit probability based on how hard the ball is struck, not where it landed.',
+    longExplanation: [
+      'Expected Batting Average (xBA) uses the launch speed and angle of each batted ball to estimate the probability it becomes a hit, then averages those probabilities. It’s the contact-quality version of batting average.',
+      'It’s the single best predictor of a hitter getting a hit because it ignores defensive positioning and luck. League average is about .245; we z-score against that.',
+      'This is the lead factor in the Get-a-Hit model. Higher is better.',
+    ],
+  },
+  ba30d: {
+    id: 'ba30d',
+    column: 'BA (30d)',
+    name: 'Batting Average, Last 30 Days',
+    categories: ['hit'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: avg3,
+    description: 'Recent form — actual batting average over the trailing 30 days.',
+    longExplanation: [
+      'A hitter’s batting average over the trailing 30 days, capturing current form on top of the season-long expected stats.',
+      'It’s noisier than the expected metrics (30 days is a small sample), so we weight it below xBA and z-score it with a wider band. It nudges hot hitters up and cold ones down without overriding the underlying skill signal.',
+      'Higher is better.',
+    ],
+  },
+  recentHr: {
+    id: 'recentHr',
+    column: 'HR (30d)',
+    name: 'Home Runs, Last 30 Days',
+    categories: ['hr'],
+    direction: 'higher-better',
+    format: (v) => `${Math.round(v)}`,
+    description: 'Home runs hit in the trailing 30 days — a small recency bump.',
+    longExplanation: [
+      'Raw count of home runs over the last 30 days, bucketed and capped at 12 so a single hot streak can’t dominate the score.',
+      'It’s the lightest-weighted factor in the Home Run model (5%) — a small nod to who’s actually running into them lately, layered on top of the skill-based ISO and xSLG signals.',
+      'Higher is better.',
+    ],
+  },
+  pitcherHr9: {
+    id: 'pitcherHr9',
+    column: 'SP HR/9',
+    name: 'Opposing Pitcher HR/9',
+    categories: ['hr'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: (v) => v.toFixed(2),
+    description: 'Home runs the starting pitcher allows per 9 innings. Higher = more hittable.',
+    longExplanation: [
+      'The opposing starter’s home runs allowed per nine innings. A pitcher who gives up a lot of homers is a softer matchup for power hitters.',
+      'League average is about 1.2 HR/9. We z-score the starter against that and add it to the hitter’s own power profile. A starter at 1.5+ HR/9 is flagged as vulnerable.',
+      'In the table, a higher number is better for the hitter (it means the pitcher is more home-run-prone). When the starter isn’t confirmed yet, this falls back to league average and the pick is flagged — see the SP TBD note.',
+    ],
+  },
+  pitcherXBaAgainst: {
+    id: 'pitcherXBaAgainst',
+    column: 'SP xBA',
+    name: 'Opposing Pitcher xBA Against',
+    categories: ['hit', 'rbi'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: avg3,
+    description: 'Contact quality the starter allows. Higher = gives up more hits.',
+    longExplanation: [
+      'The expected batting average the opposing starter allows, based on the quality of contact hitters make against them. It’s the pitcher-side mirror of a hitter’s xBA.',
+      'A high value means the pitcher surrenders hard, hittable contact; a low value means they suppress it. League average is about .245.',
+      'Higher is better for the hitter. Falls back to league average (and flags the pick) when the starter is unconfirmed.',
+    ],
+  },
+  pitcherXSlgAgainst: {
+    id: 'pitcherXSlgAgainst',
+    column: 'SP xSLG',
+    name: 'Opposing Pitcher xSLG Against',
+    categories: ['tb'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: avg3,
+    proxy: true,
+    description: 'Power the starter allows. Currently approximated from xBA-against (see note).',
+    longExplanation: [
+      'How much extra-base damage the opposing starter allows. A high value means hitters slug against them.',
+      'Approximation note: we don’t yet pull a true xSLG-against from the data source, so this is estimated from the pitcher’s xBA-against plus a fixed offset. It’s directionally right — pitchers who allow more hits generally allow more slug — but it’s a proxy, not a measured stat, and cells using it are marked accordingly. Replacing it with the real metric is on the roadmap.',
+      'Higher is better for the hitter.',
+    ],
+  },
+  parkHr: {
+    id: 'parkHr',
+    column: 'Park',
+    name: 'Park HR Factor',
+    categories: ['hr', 'hit', 'tb', 'rbi'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: (v) => `${Math.round(v)}`,
+    description: '100 = neutral. Above 100 boosts home runs; below 100 suppresses them (the “tough HR park”).',
+    longExplanation: [
+      'A park factor scales how a stadium plays relative to a neutral one. 100 is league-average; 119 (Coors Field) means about 19% more home runs than neutral; the low 90s (Petco, Oracle) is a tough HR park that suppresses power.',
+      'These are rolling three-year FanGraphs park factors, committed to the codebase. They’re fixed per stadium, so the same parks help or hurt the same hitters every day — that’s expected, not a bug.',
+      'The HR model leans on this heavily (18% of the score). The contact models (Hits, TB, RBI) use it more lightly. Higher is better for the hitter.',
+    ],
+  },
+  windCarry: {
+    id: 'windCarry',
+    column: 'Wind',
+    name: 'Wind Carry',
+    categories: ['hr'],
+    direction: 'higher-better',
+    format: (v) => (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)),
+    description: 'How much the forecast wind helps (+) or hurts (−) carry toward center field.',
+    longExplanation: [
+      'We take the first-pitch wind forecast and project it onto the stadium’s center-field axis. Wind blowing out toward center adds carry (positive); wind blowing in knocks balls down (negative); a crosswind lands in between.',
+      'The math: cos(angle between the downwind direction and the park’s CF bearing) × (wind mph / 8). Domed parks and calm conditions (under 4 mph) score zero.',
+      'It’s a small factor (8% of the HR score) and the most day-to-day variable one — it’s a big reason a hitter can pop onto today’s board and drop off tomorrow. Higher is better.',
+    ],
+  },
+  handedness: {
+    id: 'handedness',
+    column: 'Platoon',
+    name: 'Platoon Edge (Batter vs Pitcher Hand)',
+    categories: ['hr', 'hit', 'tb', 'rbi'],
+    direction: 'higher-better',
+    format: (v) => (v > 0 ? 'Fav' : v < 0 ? 'Unfav' : '—'),
+    description: 'Favorable when the batter has the opposite-handed advantage over the starter.',
+    longExplanation: [
+      'The classic platoon split: hitters generally do better against opposite-handed pitchers (a lefty bat vs a righty arm, or vice versa) and worse against same-handed ones.',
+      'We award a favorable bump for an opposite-hand matchup, a small penalty for same-hand, and neutral for switch hitters (who always have the platoon advantage but aren’t double-counted here).',
+      '“Fav” in the table means the matchup favors the hitter, “Unfav” means it doesn’t. It’s a light tiebreaker, not a primary driver.',
+    ],
+  },
+  lineupSlot: {
+    id: 'lineupSlot',
+    column: 'Slot',
+    name: 'Lineup Slot',
+    categories: ['hit', 'tb'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: (v) => (v >= 1 && v <= 9 ? `#${Math.round(v)}` : '—'),
+    description: 'Batting-order position. Top of the order = more plate appearances.',
+    longExplanation: [
+      'Where a hitter bats in the order. Leadoff and top-of-order spots guarantee more plate appearances over a game, which raises the odds of collecting a hit or total base.',
+      'We reward the top three slots, give a smaller bump to the middle, and penalize the bottom of the order. When a lineup hasn’t been posted yet we estimate it from the active roster, and the pick gets a “proj” tag.',
+      'Higher in the order is better.',
+    ],
+  },
+  lineupRbi: {
+    id: 'lineupRbi',
+    column: 'Slot',
+    name: 'Lineup Slot (RBI Opportunity)',
+    categories: ['rbi'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: (v) => (v >= 1 && v <= 9 ? `#${Math.round(v)}` : '—'),
+    description: 'Cleanup-zone slots (3–5) bat with the most runners on base.',
+    longExplanation: [
+      'For RBIs, the batting slot matters differently than for hits: the cleanup zone (3rd, 4th, 5th) comes up with the most runners already on base, so those spots carry the highest RBI opportunity.',
+      'We give the biggest bonus to the 4-hole, strong bonuses to 3 and 5, smaller credit to the 2 and 6 spots, and little to none elsewhere.',
+      'Batting in the heart of the order is better here.',
+    ],
+  },
+  kRate: {
+    id: 'kRate',
+    column: 'K/9',
+    name: 'Pitcher K/9',
+    categories: ['k'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: (v) => v.toFixed(1),
+    description: 'Strikeouts per 9 innings — the pitcher’s swing-and-miss rate.',
+    longExplanation: [
+      'Strikeouts per nine innings, the core of the strikeout projection. We use the pitcher’s last-30-day K/9 when available (to catch current form) and fall back to season K/9, then league average if neither exists.',
+      'The strikeout model isn’t a weighted z-sum like the hitting models — it multiplies K/9 by expected innings, opponent strikeout tendency, and the park factor to produce an expected strikeout count. So in the table these are shown as inputs, not additive contributions.',
+      'Higher is better.',
+    ],
+  },
+  expectedIp: {
+    id: 'expectedIp',
+    column: 'xIP',
+    name: 'Expected Innings Pitched',
+    categories: ['k', 'outs'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: (v) => v.toFixed(1),
+    description: 'Projected innings for this start — more innings means more chances for K’s and outs.',
+    longExplanation: [
+      'How deep we expect the starter to go, derived from their season innings-per-start and clamped to a realistic 4.0–6.5 inning range.',
+      'It’s the entire basis of the Total Outs projection (outs = expected IP × 3) and a multiplier in the strikeout projection — a strikeout artist who only goes four innings can’t out-K a workhorse.',
+      'Higher is better.',
+    ],
+  },
+  oppKRate: {
+    id: 'oppKRate',
+    column: 'Opp K%',
+    name: 'Opponent Strikeout Rate (vs League)',
+    categories: ['k'],
+    direction: 'higher-better',
+    keyColumn: true,
+    format: (v) => `${v >= 1 ? '+' : ''}${((v - 1) * 100).toFixed(0)}%`,
+    description: 'How strikeout-prone the opposing lineup is, relative to league average.',
+    longExplanation: [
+      'The opposing team’s strikeout rate divided by the league average, shown as a percentage above or below average. A lineup that whiffs a lot (positive) inflates a pitcher’s strikeout ceiling; a contact-heavy lineup (negative) caps it.',
+      'It enters the strikeout projection as a direct multiplier, so facing a high-strikeout offense can meaningfully lift a pitcher onto the board.',
+      'Higher (a more strikeout-prone opponent) is better for the pitcher.',
+    ],
+  },
+  parkK: {
+    id: 'parkK',
+    column: 'Park K',
+    name: 'Park Strikeout Factor',
+    categories: ['k'],
+    direction: 'higher-better',
+    format: (v) => `${Math.round(v)}`,
+    description: '100 = neutral. A small park adjustment to expected strikeouts.',
+    longExplanation: [
+      'A park adjustment for strikeouts, where 100 is neutral. Most parks sit within a point or two of neutral, so this is a minor multiplier on the strikeout projection.',
+      'Higher is better for the pitcher.',
+    ],
+  },
+}
+
+export const CATEGORY_LABELS = {
+  hr: 'Home Run',
+  hit: 'Hits',
+  k: 'Strikeouts',
+  tb: 'Total Bases',
+  rbi: 'Total RBIs',
+  outs: 'Total Outs',
+}
+
+// Factors for a category, in registry (column) order.
+export function factorsForCategory(category) {
+  return Object.values(FACTORS).filter((f) => f.categories.includes(category))
+}

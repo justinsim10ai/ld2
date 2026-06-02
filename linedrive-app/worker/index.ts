@@ -1,6 +1,9 @@
 import type { Env, DailyPayload, League } from "./types";
 import { runDailyPipeline, runHighlightPhase, readArchiveIndex } from "./pipeline";
 import { settlePayload, renderAndPersistSettled, runSettlementPhase } from "./settlement";
+import { sendDailyDigest } from "./mailer";
+
+const DIGEST_RECIPIENT = "justin.snider@crypto.com";
 
 const LEAGUES: League[] = ["mlb"];
 
@@ -44,9 +47,13 @@ export default {
     if (p === "/admin/settle") {
       return handleSettle(request, env);
     }
+    if (p === "/admin/send-digest") {
+      return handleSendDigest(request, env);
+    }
 
-    // /r/mlb-2026-05-26 → serve SPA shell; SPA reads the slug
-    if (p.startsWith("/r/")) {
+    // /r/mlb-2026-05-26 → serve SPA shell; SPA reads the slug.
+    // /factors and /factors/<id> → SPA shell; SPA renders the factor pages.
+    if (p.startsWith("/r/") || p === "/factors" || p.startsWith("/factors/")) {
       return env.ASSETS.fetch(new Request(new URL("/", url), request));
     }
 
@@ -82,6 +89,17 @@ export default {
           const r = await renderAndPersistSettled(env, payload);
           console.log(`[scheduled] ${yesterday} settlement B done: ${r.rendered} settled PNGs`);
         })().catch((err) => console.error(`[scheduled] ${yesterday} settlement B failed`, err)),
+      );
+      return;
+    }
+    if (event.cron === "15 15 * * *") {
+      const today = isoFromOffset(0);
+      const yesterday = isoFromOffset(-1);
+      ctx.waitUntil(
+        sendDailyDigest(env, { toEmail: DIGEST_RECIPIENT, picksDate: today, resultsDate: yesterday }).then(
+          (r) => console.log(`[scheduled] digest sent: id=${r.id} attached=${r.attached} notes=${r.notes.join("; ")}`),
+          (err) => console.error(`[scheduled] digest failed`, err),
+        ),
       );
       return;
     }
@@ -211,6 +229,25 @@ async function handleAdminRun(request: Request, env: Env, ctx: ExecutionContext)
     });
   } catch (err) {
     console.error(`[admin] failed`, err);
+    return jsonResponse({ status: "error", error: String(err) }, 500);
+  }
+}
+
+async function handleSendDigest(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const provided = url.searchParams.get("key") ?? "";
+  if (!env.ADMIN_KEY || provided !== env.ADMIN_KEY) {
+    return new Response("forbidden", { status: 403 });
+  }
+  const picksDate = url.searchParams.get("date") ?? isoFromOffset(0);
+  const resultsDate = url.searchParams.get("results") ?? isoFromOffset(-1);
+  const to = url.searchParams.get("to") ?? DIGEST_RECIPIENT;
+  const useSandbox = url.searchParams.get("sandbox") === "1";
+  try {
+    const r = await sendDailyDigest(env, { toEmail: to, picksDate, resultsDate, useSandbox });
+    return jsonResponse({ status: "done", id: r.id, attached: r.attached, notes: r.notes, picksDate, resultsDate, to });
+  } catch (err) {
+    console.error("[send-digest] failed", err);
     return jsonResponse({ status: "error", error: String(err) }, 500);
   }
 }

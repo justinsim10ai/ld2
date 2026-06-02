@@ -328,23 +328,7 @@ export async function runDailyPipeline(
     notes,
   };
 
-  const archiveKey = `r:${LEAGUE}:${dateIso}`;
-  const todayKey = `latest:${LEAGUE}`;
-  const json = JSON.stringify(payload);
-
-  // Update "latest" pointer when this run is for today or yesterday (UTC).
-  // The MLB slate spans late-afternoon ET into early-morning UTC the next day,
-  // so anchoring strictly to UTC today would leave stale data after midnight UTC.
-  const todayUtc = new Date(Date.now()).toISOString().slice(0, 10);
-  const yesterdayUtc = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
-  const writes: Promise<void>[] = [
-    env.LINEDRIVE_KV.put(archiveKey, json, { expirationTtl: 60 * 60 * 24 * 90 }),
-  ];
-  if (dateIso === todayUtc || dateIso === yesterdayUtc) {
-    writes.push(env.LINEDRIVE_KV.put(todayKey, json));
-    writes.push(env.LINEDRIVE_KV.put("linedrive:today", json));
-  }
-  await Promise.all(writes);
+  await writeArchiveAndMaybeAdvanceLatest(env, payload);
   await appendIndex(env, LEAGUE, dateIso);
 
   return payload;
@@ -381,17 +365,7 @@ export async function runHighlightPhase(env: Env, dateIso: string): Promise<{ re
     rendered += list.length;
   }
 
-  const json = JSON.stringify(payload);
-  const todayUtc = new Date(Date.now()).toISOString().slice(0, 10);
-  const yesterdayUtc = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
-  const writes: Promise<void>[] = [
-    env.LINEDRIVE_KV.put(archiveKey, json, { expirationTtl: 60 * 60 * 24 * 90 }),
-  ];
-  if (dateIso === todayUtc || dateIso === yesterdayUtc) {
-    writes.push(env.LINEDRIVE_KV.put(`latest:${LEAGUE}`, json));
-    writes.push(env.LINEDRIVE_KV.put("linedrive:today", json));
-  }
-  await Promise.all(writes);
+  await writeArchiveAndMaybeAdvanceLatest(env, payload);
 
   console.log(`[highlights] ${dateIso}: rendered ${rendered}`);
   return { rendered, notes: [`rendered ${rendered} highlight PNGs`] };
@@ -428,6 +402,38 @@ export async function readArchiveIndex(env: Env, league: League): Promise<string
   const raw = await env.LINEDRIVE_KV.get(`${INDEX_KEY_PREFIX}${league}`);
   if (!raw) return [];
   try { return JSON.parse(raw) as string[]; } catch { return []; }
+}
+
+/**
+ * Writes the per-date archive and, when applicable, advances the "latest"
+ * pointer. Latest is only moved FORWARD in time — if the existing latest's
+ * date is newer than the payload's date, the pointer is not touched. Prevents
+ * a settlement run for yesterday from clobbering today's pointer.
+ */
+export async function writeArchiveAndMaybeAdvanceLatest(env: Env, payload: DailyPayload): Promise<void> {
+  const dateIso = payload.date;
+  const archiveKey = `r:${LEAGUE}:${dateIso}`;
+  const json = JSON.stringify(payload);
+  const todayUtc = new Date(Date.now()).toISOString().slice(0, 10);
+  const yesterdayUtc = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
+  const writes: Promise<void>[] = [
+    env.LINEDRIVE_KV.put(archiveKey, json, { expirationTtl: 60 * 60 * 24 * 90 }),
+  ];
+  if (dateIso === todayUtc || dateIso === yesterdayUtc) {
+    let allowLatestWrite = true;
+    try {
+      const existing = await env.LINEDRIVE_KV.get(`latest:${LEAGUE}`);
+      if (existing) {
+        const cur = JSON.parse(existing) as DailyPayload;
+        if (cur.date && cur.date > dateIso) allowLatestWrite = false;
+      }
+    } catch { /* malformed — fall through and overwrite */ }
+    if (allowLatestWrite) {
+      writes.push(env.LINEDRIVE_KV.put(`latest:${LEAGUE}`, json));
+      writes.push(env.LINEDRIVE_KV.put("linedrive:today", json));
+    }
+  }
+  await Promise.all(writes);
 }
 
 function buildBlock(category: Category, picks: Pick[], leaderboard: string | undefined, leaderboardAmerican: string | undefined, highlights: string[] | undefined): CategoryBlock {

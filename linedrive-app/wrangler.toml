@@ -31,6 +31,7 @@ crons = [
   "2 15 * * *",   # today phase B (24 highlight PNGs)
   "5 15 * * *",   # day+1 phase A (leaderboards only)
   "10 15 * * *",  # day+2 phase A (leaderboards only)
+  "15 15 * * *",  # daily digest email (11:15am ET, 13 min after today phase B)
 ]
 
 # KV namespace for the daily JSON payload.
