@@ -3,6 +3,7 @@ import { runDailyPipeline, runHighlightPhase, readArchiveIndex } from "./pipelin
 import { settlePayload, renderAndPersistSettled, runSettlementPhase } from "./settlement";
 import { sendDailyDigest } from "./mailer";
 import { storeSavantCsv, readSavant } from "./sources/savant";
+import { computeBacktest } from "./backtest";
 
 const DIGEST_RECIPIENT = "justin.snider@crypto.com";
 
@@ -28,6 +29,11 @@ export default {
     if (p.startsWith("/api/index/")) {
       const league = p.slice("/api/index/".length) as League;
       return handleIndex(env, league);
+    }
+
+    if (p.startsWith("/api/backtest/")) {
+      const league = p.slice("/api/backtest/".length) as League;
+      return handleBacktest(env, league);
     }
 
     // /img/r/mlb/2026-05-26/leaderboard-hr.png  (optionally ?download=foo.png)
@@ -57,7 +63,7 @@ export default {
 
     // /r/mlb-2026-05-26 → serve SPA shell; SPA reads the slug.
     // /factors and /factors/<id> → SPA shell; SPA renders the factor pages.
-    if (p.startsWith("/r/") || p === "/factors" || p.startsWith("/factors/")) {
+    if (p.startsWith("/r/") || p === "/factors" || p.startsWith("/factors/") || p === "/backtest") {
       return env.ASSETS.fetch(new Request(new URL("/", url), request));
     }
 
@@ -168,6 +174,13 @@ async function handleIndex(env: Env, league: League): Promise<Response> {
   if (!LEAGUES.includes(league)) return jsonResponse({ error: "unknown league" }, 404);
   const dates = await readArchiveIndex(env, league);
   return jsonResponse({ league, dates });
+}
+
+async function handleBacktest(env: Env, league: League): Promise<Response> {
+  if (!LEAGUES.includes(league)) return jsonResponse({ error: "unknown league" }, 404);
+  // Reads every archived payload — cache 10 min so it isn't recomputed per view.
+  const report = await computeBacktest(env, league);
+  return jsonText(JSON.stringify(report), 600);
 }
 
 async function handleImage(env: Env, key: string, downloadName: string | null): Promise<Response> {

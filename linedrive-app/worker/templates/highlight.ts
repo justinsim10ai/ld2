@@ -1,5 +1,6 @@
 import type { Category, Pick } from "../types";
 import { h } from "./h";
+import { topFactorChips } from "../factors";
 import { COLORS, CATEGORY_ACCENT, FONT_DISPLAY, FONT_SANS } from "./theme";
 
 export interface HighlightProps {
@@ -165,7 +166,7 @@ export function highlightNode(props: HighlightProps) {
         { style: { display: "flex", fontSize: 22, color: COLORS.muted, marginBottom: 14, letterSpacing: 2 } },
         "WHY THIS PICK",
       ),
-      ...p.signals.map((s) =>
+      ...topFactorChips(p, 4).map((s) =>
         h(
           "div",
           { style: { display: "flex", alignItems: "center", fontSize: 30, marginBottom: 10 } },

@@ -1,5 +1,6 @@
 import type { Category, Pick } from "../types";
 import { h } from "./h";
+import { topFactorChips } from "../factors";
 import { COLORS, CATEGORY_ACCENT, FONT_DISPLAY, FONT_SANS } from "./theme";
 
 function scoreLegend(category: Category): string {
@@ -212,7 +213,7 @@ function leaderboardRow(p: Pick, i: number, accentColor: string, mode: "pct" | "
       h(
         "div",
         { style: { fontSize: 16, color: COLORS.subtle, marginTop: 3, display: "flex" } },
-        p.signals[0] ?? "",
+        topFactorChips(p, 3).join("   ·   "),
       ),
     ),
     // Score column (model)

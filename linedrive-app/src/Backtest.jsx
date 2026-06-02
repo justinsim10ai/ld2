@@ -1,0 +1,129 @@
+import { useEffect, useState } from 'react'
+import { CATEGORY_LABELS } from './factors'
+import './About.css'
+import './Backtest.css'
+
+const CATEGORY_ORDER = ['hr', 'hit', 'tb', 'rbi', 'k', 'outs']
+
+const pct = (v) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`)
+const money = (v) => (v == null ? '—' : `${v >= 0 ? '+' : '−'}$${Math.abs(v).toFixed(2)}`)
+const roiStr = (v) => (v == null ? '—' : `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)}%`)
+
+function Stat({ label, value, tone }) {
+  return (
+    <div className={`bt-stat ${tone ?? ''}`}>
+      <span className="bt-stat-value">{value}</span>
+      <span className="bt-stat-label">{label}</span>
+    </div>
+  )
+}
+
+export default function Backtest({ onBack }) {
+  const [data, setData] = useState(null)
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let live = true
+    fetch('/api/backtest/mlb')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((d) => { if (live) { setData(d); setLoading(false) } })
+      .catch((e) => { if (live) { setError(String(e)); setLoading(false) } })
+    return () => { live = false }
+  }, [])
+
+  const o = data?.overall
+  const toneOf = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg')
+
+  return (
+    <main className="app-shell about-shell">
+      <header className="hero-panel about-hero">
+        <div className="hero-top">
+          <div className="hero-brand">
+            <img src="/brand/OG-LOGO-FLAME.svg" alt="OG" />
+            <div className="hero-brand-text">
+              <span className="tag">LineDrive</span>
+              <span className="sub">Find Your Edge</span>
+            </div>
+          </div>
+          <button className="button secondary" onClick={onBack}>← Today&rsquo;s board</button>
+        </div>
+        <div className="hero-copy">
+          <h1>The <em>track record</em>.</h1>
+          <p>
+            How LineDrive&rsquo;s top picks have actually performed against the OG market, settled
+            against real game results. Hit rate is wins over finalized picks; ROI is profit on a flat
+            <strong> $10 stake</strong> per pick (only picks that had OG odds count toward ROI). No
+            cherry-picking &mdash; every ranked pick is graded.
+          </p>
+        </div>
+      </header>
+
+      {loading && <section className="doc-section"><p>Loading results…</p></section>}
+      {error && <section className="doc-section"><p>Couldn&rsquo;t load backtest: {error}</p></section>}
+
+      {data && !data.dateCount && (
+        <section className="doc-section">
+          <p className="muted-note">No settled results yet. Picks are graded the morning after each
+            slate, so the track record fills in once games have been played and settled.</p>
+        </section>
+      )}
+
+      {data && data.dateCount > 0 && (
+        <>
+          <section className="doc-section">
+            <h2>Overall</h2>
+            <div className="bt-stat-row">
+              <Stat label="Picks graded" value={o.picks} />
+              <Stat label="Hit rate" value={pct(o.hitRate)} />
+              <Stat label="ROI (flat $10)" value={roiStr(o.roi)} tone={toneOf(o.roi)} />
+              <Stat label="Net profit" value={money(o.profit)} tone={toneOf(o.profit)} />
+            </div>
+            <p className="muted-note">
+              {data.dateCount} slate{data.dateCount === 1 ? '' : 's'}
+              {data.dateRange ? `, ${data.dateRange.start} → ${data.dateRange.end}` : ''}.
+              Model hit rate vs. the market&rsquo;s implied{' '}
+              {o.marketImpliedHitRate != null ? pct(o.marketImpliedHitRate) : '—'}.
+            </p>
+          </section>
+
+          <section className="doc-section">
+            <h2>By category</h2>
+            <table className="weights-table bt-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Picks</th>
+                  <th>Hit rate</th>
+                  <th>Market implied</th>
+                  <th>ROI</th>
+                  <th>Profit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CATEGORY_ORDER.map((c) => {
+                  const s = data.byCategory[c]
+                  if (!s) return null
+                  return (
+                    <tr key={c}>
+                      <td>{CATEGORY_LABELS[c] ?? c}</td>
+                      <td>{s.picks}</td>
+                      <td>{pct(s.hitRate)}</td>
+                      <td className="bt-muted">{pct(s.marketImpliedHitRate)}</td>
+                      <td className={`bt-${toneOf(s.roi)}`}>{roiStr(s.roi)}</td>
+                      <td className={`bt-${toneOf(s.profit)}`}>{money(s.profit)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            <p className="muted-note">
+              &ldquo;Market implied&rdquo; is the average win probability the OG line assigned to our
+              picks. When our hit rate beats it, the model is finding edges the market missed.
+            </p>
+          </section>
+        </>
+      )}
+    </main>
+  )
+}

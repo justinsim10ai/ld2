@@ -1,4 +1,4 @@
-import type { PlayerCategory } from "./types";
+import type { PlayerCategory, Pick } from "./types";
 
 // ---------------------------------------------------------------------------
 // Factor registry — the source of truth for which scoring factors exist, what
@@ -218,4 +218,20 @@ export const FACTORS: Record<string, FactorDef> = {
 // Factors for a category, in registry (column) order.
 export function factorsForCategory(category: PlayerCategory): FactorDef[] {
   return Object.values(FACTORS).filter((f) => f.categories.includes(category));
+}
+
+// Top-N factors for a pick as compact "Label value" chips (e.g. "Barrel% 20.2%",
+// "Park 119"), highest |contribution| first. Used by the social PNGs so they
+// reflect the same structured factors as the web table. Skips baseline-fallback
+// (neutral) factors; for multiplicative scorers (K/Outs, all contribution 0)
+// keeps registry order. Falls back to legacy signals for picks with no factors
+// (game totals) or when every factor is neutral.
+export function topFactorChips(pick: Pick, n: number): string[] {
+  const factors = (pick.factors ?? []).filter((f) => !f.neutral);
+  if (!factors.length) return pick.signals.slice(0, n);
+  const hasContrib = factors.some((f) => f.contribution !== 0);
+  const ordered = hasContrib
+    ? [...factors].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+    : factors;
+  return ordered.slice(0, n).map((f) => `${FACTORS[f.id]?.column ?? f.id} ${f.display}`);
 }

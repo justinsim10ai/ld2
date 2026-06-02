@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, Fragment } from 'react'
 import About from './About'
 import { FactorsIndex, FactorPage } from './FactorPages'
+import Backtest from './Backtest'
 import { FACTORS, factorsForCategory } from './factors'
 import './App.css'
 
@@ -73,6 +74,10 @@ function parseFactorPath(pathname) {
   const m = pathname.match(/^\/factors\/([a-zA-Z0-9]+)\/?$/)
   if (!m) return null
   return { id: m[1] }
+}
+
+function isBacktestPath(pathname) {
+  return /^\/backtest\/?$/.test(pathname)
 }
 
 function imgUrl(payload, filename) {
@@ -590,6 +595,7 @@ function App() {
   const slug = useMemo(() => parseSlug(path), [path])
   const showAbout = useMemo(() => isAboutPath(path), [path])
   const factorRoute = useMemo(() => parseFactorPath(path), [path])
+  const showBacktest = useMemo(() => isBacktestPath(path), [path])
 
   const loadPayload = useCallback(async (s) => {
     setLoading(true)
@@ -648,6 +654,12 @@ function App() {
   }, [])
 
   const goFactorsIndex = useCallback(() => goFactor(null), [goFactor])
+
+  const goBacktest = useCallback(() => {
+    window.history.pushState({}, '', '/backtest')
+    setPath('/backtest')
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [])
 
   const promptAdminKey = useCallback(() => {
     const k = window.prompt('Admin key:')
@@ -719,6 +731,9 @@ function App() {
   if (showAbout) {
     return <About onBack={goHome} />
   }
+  if (showBacktest) {
+    return <Backtest onBack={goHome} />
+  }
   if (factorRoute?.index) {
     return <FactorsIndex onBack={goHome} onPick={goFactor} />
   }
@@ -782,6 +797,7 @@ function App() {
                 aria-label="Set admin key"
               >⋯</button>
             )}
+            <button className="button secondary" onClick={goBacktest}>Track record</button>
             <button className="button secondary" onClick={goFactorsIndex}>Factors</button>
             <button className="button secondary" onClick={goAbout}>About</button>
             <span className="eyebrow">Daily · MLB</span>
