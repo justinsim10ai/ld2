@@ -528,6 +528,7 @@ function buildPitcherStats(id: number, team: TeamRef, profiles: Map<number, Play
     k9Last30: profile.k9Last30,
     hr9Season: profile.hr9Season,
     xBaAgainstSeason: profile.xBaAgainst,
+    xSlgAgainstSeason: profile.xSlgAgainst,
     expectedIp,
   };
 }

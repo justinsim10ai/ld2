@@ -55,6 +55,15 @@ export const FACTORS: Record<string, FactorDef> = {
     keyColumn: true,
     format: avg3,
   },
+  xwoba: {
+    id: "xwoba",
+    column: "xwOBA",
+    name: "Expected Weighted On-Base Average",
+    categories: ["hit", "tb", "rbi"],
+    direction: "higher-better",
+    keyColumn: true,
+    format: avg3,
+  },
   ba30d: {
     id: "ba30d",
     column: "BA (30d)",

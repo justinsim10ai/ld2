@@ -69,6 +69,7 @@ export interface PitcherStats {
   k9Last30: number | null;
   hr9Season: number | null;
   xBaAgainstSeason: number | null;
+  xSlgAgainstSeason: number | null;
   expectedIp: number;
 }
 

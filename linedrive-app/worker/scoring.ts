@@ -19,26 +19,29 @@ const WEIGHTS = {
     handedness: 0.04,
   },
   hit: {
-    xBa: 0.30,
-    ba30d: 0.20,
-    pitcherXBaAgainst: 0.20,
+    xBa: 0.24,
+    xwoba: 0.12,
+    ba30d: 0.18,
+    pitcherXBaAgainst: 0.18,
     lineupSlot: 0.12,
-    handedness: 0.10,
+    handedness: 0.08,
     park: 0.08,
   },
   tb: {
-    xSlg: 0.30,
-    iso: 0.20,
-    pitcherXSlgAgainst: 0.20,
+    xSlg: 0.26,
+    xwoba: 0.10,
+    iso: 0.18,
+    pitcherXSlgAgainst: 0.18,
     lineupSlot: 0.10,
     park: 0.10,
-    handedness: 0.10,
+    handedness: 0.08,
   },
   rbi: {
-    xSlg: 0.30,
-    iso: 0.20,
+    xSlg: 0.25,
+    xwoba: 0.10,
+    iso: 0.18,
     lineupRbiBonus: 0.20,
-    pitcherXBaAgainst: 0.15,
+    pitcherXBaAgainst: 0.12,
     park: 0.08,
     handedness: 0.07,
   },
@@ -49,6 +52,7 @@ const LEAGUE_BASELINES = {
   hrPerPa: 0.030,
   xSlg: 0.395,
   xBa: 0.245,
+  xwoba: 0.315,
   ba: 0.245,
   pitcherHr9: 1.2,
   pitcherK9: 8.7,
@@ -187,6 +191,10 @@ export function scoreHit(ctx: BatterContext): Scored<BatterContext> {
   const xBaZ = (xBa - LEAGUE_BASELINES.xBa) / 0.03;
   fb.add("xBa", xBa, xBaZ, w.xBa, FACTORS.xBa.format(xBa), { neutral: b.xBaSeason == null });
 
+  const xwoba = b.xwObaSeason ?? LEAGUE_BASELINES.xwoba;
+  const xwobaZ = (xwoba - LEAGUE_BASELINES.xwoba) / 0.03;
+  fb.add("xwoba", xwoba, xwobaZ, w.xwoba, FACTORS.xwoba.format(xwoba), { neutral: b.xwObaSeason == null });
+
   const ba30 = b.ba30d ?? LEAGUE_BASELINES.ba;
   const ba30Z = (ba30 - LEAGUE_BASELINES.ba) / 0.04;
   fb.add("ba30d", ba30, ba30Z, w.ba30d, FACTORS.ba30d.format(ba30), { neutral: b.ba30d == null });
@@ -263,15 +271,22 @@ export function scoreTotalBases(ctx: BatterContext): Scored<BatterContext> {
   const xSlgZ = (xSlg - LEAGUE_BASELINES.xSlg) / 0.08;
   fb.add("xSlg", xSlg, xSlgZ, w.xSlg, FACTORS.xSlg.format(xSlg), { neutral: b.xSlgSeason == null });
 
+  const xwoba = b.xwObaSeason ?? LEAGUE_BASELINES.xwoba;
+  const xwobaZ = (xwoba - LEAGUE_BASELINES.xwoba) / 0.03;
+  fb.add("xwoba", xwoba, xwobaZ, w.xwoba, FACTORS.xwoba.format(xwoba), { neutral: b.xwObaSeason == null });
+
   const iso = b.isoSeason ?? LEAGUE_BASELINES.iso;
   const isoZ = (iso - LEAGUE_BASELINES.iso) / 0.06;
   fb.add("iso", iso, isoZ, w.iso, FACTORS.iso.format(iso), { neutral: b.isoSeason == null });
 
-  // We don't fetch pitcher xSLG-against; approximate it from xBA-against (+0.15).
-  // Flagged proxy so the UI/factor page disclose it's an approximation.
-  const pitcherSlgAgainst = (p?.xBaAgainstSeason ?? LEAGUE_BASELINES.pitcherXBaAgainst) + 0.15;
+  // Real pitcher xSLG-against from MLB expectedStatistics. Fall back to an
+  // xBA-against-derived proxy only when the real value is missing.
+  const realSlgAgainst = p?.xSlgAgainstSeason ?? null;
+  const isProxy = realSlgAgainst == null;
+  const pitcherSlgAgainst = realSlgAgainst
+    ?? (p?.xBaAgainstSeason ?? LEAGUE_BASELINES.pitcherXBaAgainst) + 0.15;
   const pitcherSlgZ = (pitcherSlgAgainst - LEAGUE_BASELINES.pitcherXSlgAgainst) / 0.08;
-  fb.add("pitcherXSlgAgainst", pitcherSlgAgainst, pitcherSlgZ, w.pitcherXSlgAgainst, FACTORS.pitcherXSlgAgainst.format(pitcherSlgAgainst), { neutral: !pitcherConfirmed, proxy: true });
+  fb.add("pitcherXSlgAgainst", pitcherSlgAgainst, pitcherSlgZ, w.pitcherXSlgAgainst, FACTORS.pitcherXSlgAgainst.format(pitcherSlgAgainst), { neutral: !pitcherConfirmed, proxy: isProxy });
 
   const slot = ctx.lineupSlot ?? 9;
   const slotBonus = slot <= 5 ? 1 : slot <= 7 ? 0.2 : -0.5;
@@ -308,6 +323,10 @@ export function scoreTotalRbis(ctx: BatterContext): Scored<BatterContext> {
   const xSlg = b.xSlgSeason ?? LEAGUE_BASELINES.xSlg;
   const xSlgZ = (xSlg - LEAGUE_BASELINES.xSlg) / 0.08;
   fb.add("xSlg", xSlg, xSlgZ, w.xSlg, FACTORS.xSlg.format(xSlg), { neutral: b.xSlgSeason == null });
+
+  const xwoba = b.xwObaSeason ?? LEAGUE_BASELINES.xwoba;
+  const xwobaZ = (xwoba - LEAGUE_BASELINES.xwoba) / 0.03;
+  fb.add("xwoba", xwoba, xwobaZ, w.xwoba, FACTORS.xwoba.format(xwoba), { neutral: b.xwObaSeason == null });
 
   const iso = b.isoSeason ?? LEAGUE_BASELINES.iso;
   const isoZ = (iso - LEAGUE_BASELINES.iso) / 0.06;
