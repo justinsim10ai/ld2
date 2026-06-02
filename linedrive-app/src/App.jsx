@@ -358,6 +358,21 @@ function formatEdge(edge) {
   return '—'
 }
 
+// A holistic data-confidence read for a pick, derived from existing flags.
+// Returns { level: 'high'|'med'|'low', reasons }. High = full data; lower when
+// the matchup is unconfirmed or factors are leaning on league-average fallbacks.
+function pickConfidence(p) {
+  const reasons = []
+  const neutralCount = (p.factors ?? []).filter((f) => f.neutral).length
+  if (p.dataQuality && p.dataQuality.pitcherConfirmed === false) reasons.push('Opposing starter not confirmed')
+  if (p.lineupProjected) reasons.push('Lineup not yet posted')
+  if (neutralCount > 0) reasons.push(`${neutralCount} factor${neutralCount === 1 ? '' : 's'} using a league-average fallback`)
+  let level = 'high'
+  if (p.dataQuality && p.dataQuality.pitcherConfirmed === false) level = 'low'
+  else if (p.lineupProjected || neutralCount >= 2) level = 'med'
+  return { level, reasons }
+}
+
 // Registry-driven ranking table: one column per scoring factor for the active
 // category. Headers link to the factor's explainer page; rows expand to a full
 // breakdown; an "edge vs market" sort surfaces picks the model rates higher
@@ -369,11 +384,17 @@ function FactorTable({ block, category, oddsMode, goFactor }) {
   const cols = useMemo(() => factorsForCategory(category), [category])
   const hasFactors = useMemo(() => block.picks.some((p) => p.factors?.length), [block.picks])
 
-  // Ordinal "edge": within the market-priced subset, how many spots higher the
-  // model ranks a pick than the market does. Honest (rank-based, no fake
-  // probability) and surfaces undervalued names. Picks with no market sort last.
+  // Three views over the same picks:
+  // - "score": the model's own ranking (default).
+  // - "edge": ordinal — within the market-priced subset, how many spots higher
+  //   the model ranks a pick than the market does. Surfaces undervalued names.
+  // - "blend": consensus — picks both the model and the market rate highly,
+  //   from a 50/50 mix of normalized model score and market-implied probability.
   const rows = useMemo(() => {
     const picks = block.picks
+    const scores = picks.map((p) => p.score)
+    const min = Math.min(...scores), max = Math.max(...scores)
+    const span = (max - min) || 1
     const priced = picks.filter((p) => p.marketPct != null)
     const modelRank = new Map(priced.map((p, i) => [pickKey(p), i + 1])) // priced preserves score order
     const byMarket = [...priced].sort((a, b) => b.marketPct - a.marketPct)
@@ -381,9 +402,13 @@ function FactorTable({ block, category, oddsMode, goFactor }) {
     const arr = picks.map((p) => {
       const k = pickKey(p)
       const edge = modelRank.has(k) ? marketRank.get(k) - modelRank.get(k) : null
-      return { p, edge }
+      const modelNorm = (p.score - min) / span
+      // Priced picks blend model + market; unpriced fall back to model alone, halved so they don't dominate.
+      const blend = p.marketPct != null ? 0.5 * modelNorm + 0.5 * p.marketPct : 0.5 * modelNorm
+      return { p, edge, blend }
     })
     if (sortMode === 'edge') arr.sort((a, b) => (b.edge ?? -Infinity) - (a.edge ?? -Infinity))
+    else if (sortMode === 'blend') arr.sort((a, b) => b.blend - a.blend)
     return arr
   }, [block.picks, sortMode])
 
@@ -415,6 +440,11 @@ function FactorTable({ block, category, oddsMode, goFactor }) {
               onClick={() => setSortMode('edge')}
               title="Spots the model ranks a pick above the market"
             >Edge vs market</button>
+            <button
+              className={sortMode === 'blend' ? 'active' : ''}
+              onClick={() => setSortMode('blend')}
+              title="Consensus: a 50/50 blend of model score and market"
+            >Blend</button>
           </span>
         )}
       </div>
@@ -446,6 +476,13 @@ function FactorTable({ block, category, oddsMode, goFactor }) {
                   <tr className={`factor-row ${isOpen ? 'open' : ''}`} onClick={() => toggle(key)}>
                     <td className="rank sticky-col col-rank">{p.rank}</td>
                     <td className="player sticky-col col-player">
+                      {(() => {
+                        const c = pickConfidence(p)
+                        const title = c.level === 'high'
+                          ? 'High confidence — full data'
+                          : `${c.level === 'low' ? 'Low' : 'Medium'} confidence — ${c.reasons.join('; ')}`
+                        return <span className={`conf-dot conf-${c.level}`} title={title} aria-label={title}>●</span>
+                      })()}
                       <span className="player-name">{p.playerName}</span>
                       {p.lineupProjected && <span className="proj-tag" title="Lineup not yet posted">proj</span>}
                       {spTbd && <span className="proj-tag sp-tbd" title="Opposing starter not confirmed — pitcher factors use league average">SP TBD</span>}

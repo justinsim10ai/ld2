@@ -882,6 +882,11 @@
 }
 .factor-table-scroll .factor-link:hover { color: var(--og-flame); text-decoration: underline; }
 
+.conf-dot { font-size: 0.6rem; margin-right: 6px; vertical-align: middle; cursor: help; }
+.conf-dot.conf-high { color: #7AE3B8; }
+.conf-dot.conf-med { color: var(--og-sunset); }
+.conf-dot.conf-low { color: var(--og-flame); }
+
 .factor-table-scroll .neutral-cell { color: rgba(182, 209, 230, 0.32); font-style: italic; }
 .factor-table-scroll .proxy-cell::after {
   content: '~';
