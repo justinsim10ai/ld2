@@ -18,10 +18,25 @@ function Stat({ label, value, tone }) {
   )
 }
 
+const COLUMNS = [
+  { key: 'category', label: 'Category', numeric: false },
+  { key: 'picks', label: 'Picks', numeric: true },
+  { key: 'hitRate', label: 'Hit rate', numeric: true },
+  { key: 'marketImpliedHitRate', label: 'Market implied', numeric: true },
+  { key: 'roi', label: 'ROI', numeric: true },
+  { key: 'profit', label: 'Profit', numeric: true },
+]
+
 export default function Backtest({ onBack }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [sort, setSort] = useState({ key: 'roi', dir: 'desc' })
+
+  const onSort = (col) => setSort((prev) => {
+    if (prev.key === col.key) return { key: col.key, dir: prev.dir === 'desc' ? 'asc' : 'desc' }
+    return { key: col.key, dir: col.numeric ? 'desc' : 'asc' } // numbers default high→low
+  })
 
   useEffect(() => {
     let live = true
@@ -92,29 +107,42 @@ export default function Backtest({ onBack }) {
             <table className="weights-table bt-table">
               <thead>
                 <tr>
-                  <th>Category</th>
-                  <th>Picks</th>
-                  <th>Hit rate</th>
-                  <th>Market implied</th>
-                  <th>ROI</th>
-                  <th>Profit</th>
+                  {COLUMNS.map((col) => (
+                    <th
+                      key={col.key}
+                      className={`bt-th ${col.numeric ? 'bt-th-num' : ''} ${sort.key === col.key ? 'bt-th-active' : ''}`}
+                      onClick={() => onSort(col)}
+                    >
+                      {col.label}
+                      <span className="bt-arrow">{sort.key === col.key ? (sort.dir === 'desc' ? ' ▾' : ' ▴') : ''}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {CATEGORY_ORDER.map((c) => {
-                  const s = data.byCategory[c]
-                  if (!s) return null
-                  return (
-                    <tr key={c}>
-                      <td>{CATEGORY_LABELS[c] ?? c}</td>
+                {CATEGORY_ORDER
+                  .map((c) => (data.byCategory[c] ? { c, label: CATEGORY_LABELS[c] ?? c, ...data.byCategory[c] } : null))
+                  .filter(Boolean)
+                  .sort((a, b) => {
+                    if (sort.key === 'category') {
+                      return sort.dir === 'asc' ? a.label.localeCompare(b.label) : b.label.localeCompare(a.label)
+                    }
+                    const av = a[sort.key], bv = b[sort.key]
+                    if (av == null && bv == null) return 0
+                    if (av == null) return 1 // nulls always last
+                    if (bv == null) return -1
+                    return sort.dir === 'desc' ? bv - av : av - bv
+                  })
+                  .map((s) => (
+                    <tr key={s.c}>
+                      <td>{s.label}</td>
                       <td>{s.picks}</td>
                       <td>{pct(s.hitRate)}</td>
                       <td className="bt-muted">{pct(s.marketImpliedHitRate)}</td>
                       <td className={`bt-${toneOf(s.roi)}`}>{roiStr(s.roi)}</td>
                       <td className={`bt-${toneOf(s.profit)}`}>{money(s.profit)}</td>
                     </tr>
-                  )
-                })}
+                  ))}
               </tbody>
             </table>
             <p className="muted-note">

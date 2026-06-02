@@ -31,6 +31,11 @@
 .bt-stat.pos .bt-stat-value { color: #7AE3B8; }
 .bt-stat.neg .bt-stat-value { color: #E95E5E; }
 
+.bt-th { cursor: pointer; user-select: none; white-space: nowrap; }
+.bt-th:hover { color: var(--og-flame); }
+.bt-th-active { color: var(--og-flame); }
+.bt-arrow { font-size: 0.8em; }
+
 .bt-table td { font-variant-numeric: tabular-nums; }
 .bt-table .bt-muted { color: rgba(182, 209, 230, 0.55); }
 .bt-pos { color: #7AE3B8; font-weight: 700; }
