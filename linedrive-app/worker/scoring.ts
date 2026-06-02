@@ -65,6 +65,7 @@ const LEAGUE_BASELINES = {
   pitcherXSlgAgainst: 0.395,
   parkRunFactor: 100,
   gameTotalLeague: 8.6,
+  bullpenRunRate: 4.1,   // league-average reliever runs allowed per 9
 };
 
 interface Scored<TCtx> {
@@ -411,6 +412,8 @@ export interface GameScoringContext {
   homePitcher: PitcherContext["pitcher"] | null;
   awayLineupKPct: number | null;
   homeLineupKPct: number | null;
+  awayBullpenRunRate: number | null;   // reliever R/9, null → league baseline
+  homeBullpenRunRate: number | null;
   weather: PitcherContext["weather"];
 }
 
@@ -421,9 +424,17 @@ export interface GameScored {
 }
 
 export function scoreGameTotal(ctx: GameScoringContext): GameScored {
-  // Both starting pitchers' K/9 vs league as a (rough) ERA proxy
-  function pitcherRunRate(p: typeof ctx.awayPitcher): number {
-    if (!p) return 4.5; // league avg expected runs against
+  // Runs a team is expected to allow = starter's rate over his expected innings
+  // + that team's real bullpen rate over the rest. A starter going ~5-6 innings
+  // leaves the pen ~3-4 (bullpenShare = 1 - IP/9), so a good/bad bullpen moves
+  // the total proportionally to the innings it actually covers, not the whole game.
+  function pitcherRunRate(p: typeof ctx.awayPitcher, bullpenRunRate: number | null): number {
+    const pen = bullpenRunRate ?? LEAGUE_BASELINES.bullpenRunRate;
+    if (!p) {
+      // Unknown starter: league-average starter over ~5.5 IP, real pen for the rest.
+      const starterShare = 5.5 / 9;
+      return 4.5 * starterShare + pen * (1 - starterShare);
+    }
     const hr9 = p.hr9Season ?? LEAGUE_BASELINES.pitcherHr9;
     const k9 = p.k9Last30 ?? p.k9Season ?? LEAGUE_BASELINES.pitcherK9;
     // Higher HR/9 → more runs; higher K/9 → fewer runs allowed; tuned to ~4.5 league avg
@@ -431,14 +442,14 @@ export function scoreGameTotal(ctx: GameScoringContext): GameScored {
     const hrEffect = (hr9 - LEAGUE_BASELINES.pitcherHr9) * 0.7;
     const kEffect = (LEAGUE_BASELINES.pitcherK9 - k9) * 0.18;
     const ip = p.expectedIp || 5.5;
-    // Scale to expected-IP relative to a 9-inning team game
     const starterShare = ip / 9;
     const bullpenShare = 1 - starterShare;
-    return (base + hrEffect + kEffect) * starterShare + 4.5 * bullpenShare;
+    return (base + hrEffect + kEffect) * starterShare + pen * bullpenShare;
   }
 
-  const awayRunsAgainst = pitcherRunRate(ctx.homePitcher); // away offense scored against home pitcher
-  const homeRunsAgainst = pitcherRunRate(ctx.awayPitcher);
+  // Away offense faces the home starter + home bullpen, and vice versa.
+  const awayRunsAgainst = pitcherRunRate(ctx.homePitcher, ctx.homeBullpenRunRate);
+  const homeRunsAgainst = pitcherRunRate(ctx.awayPitcher, ctx.awayBullpenRunRate);
   let total = awayRunsAgainst + homeRunsAgainst;
 
   // Park adjustment
@@ -458,6 +469,12 @@ export function scoreGameTotal(ctx: GameScoringContext): GameScored {
   if (ctx.awayPitcher) signals.push(`${ctx.awayPitcher.fullName}: ${(ctx.awayPitcher.hr9Season ?? 0).toFixed(2)} HR/9, ${(ctx.awayPitcher.k9Last30 ?? ctx.awayPitcher.k9Season ?? 0).toFixed(1)} K/9`);
   if (ctx.parkRunFactor >= 110) signals.push(`Run-friendly park (${ctx.parkRunFactor})`);
   if (ctx.parkRunFactor <= 92) signals.push(`Pitcher's park (${ctx.parkRunFactor})`);
+  // Bullpen — only flag when notably good/bad (it covers ~3 of 9 innings).
+  for (const [abbr, pen] of [[ctx.awayAbbrev, ctx.awayBullpenRunRate], [ctx.homeAbbrev, ctx.homeBullpenRunRate]] as const) {
+    if (pen == null) continue;
+    if (pen >= 4.8) signals.push(`${abbr} shaky bullpen (${pen.toFixed(1)} R/9)`);
+    else if (pen <= 3.5) signals.push(`${abbr} strong bullpen (${pen.toFixed(1)} R/9)`);
+  }
   if (weatherAdj > 0.2) signals.push(`Hot/windy — runs +${weatherAdj.toFixed(1)}`);
   if (weatherAdj < -0.2) signals.push(`Cool — runs ${weatherAdj.toFixed(1)}`);
 

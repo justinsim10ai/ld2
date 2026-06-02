@@ -17,7 +17,7 @@ const LEAGUE: League = "mlb";
 
 import { lookupPark } from "./parks";
 import { fetchTodaysGames, fetchLineupForGame, fetchTeamActiveRoster } from "./sources/mlbSchedule";
-import { fetchPlayerProfiles, fetchAllTeamHittingKRates, fetchVsPitcher } from "./sources/mlbPlayer";
+import { fetchPlayerProfiles, fetchAllTeamHittingKRates, fetchAllTeamBullpenRates, fetchVsPitcher } from "./sources/mlbPlayer";
 import { readSavant } from "./sources/savant";
 import type { PlayerProfile, TeamSeasonHitting, VsPitcherLine } from "./sources/mlbPlayer";
 import { fetchParkWeatherAt } from "./sources/weather";
@@ -111,6 +111,7 @@ export async function runDailyPipeline(
   });
 
   const teamK = await fetchAllTeamHittingKRates();
+  const teamBullpen = await fetchAllTeamBullpenRates();
 
   // Statcast (Baseball Savant) — read from KV, populated off-worker by the
   // savant uploader (savant blocks Worker egress). Merge onto profiles by id;
@@ -207,6 +208,8 @@ export async function runDailyPipeline(
       homePitcher: homePitcherStats,
       awayLineupKPct: null,
       homeLineupKPct: null,
+      awayBullpenRunRate: teamBullpen.get(g.awayTeam.id) ?? null,
+      homeBullpenRunRate: teamBullpen.get(g.homeTeam.id) ?? null,
       weather,
     });
   }

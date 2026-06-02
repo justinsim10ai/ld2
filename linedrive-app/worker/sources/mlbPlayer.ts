@@ -198,6 +198,28 @@ export async function fetchAllTeamHittingKRates(): Promise<Map<number, TeamSeaso
 
 export { SEASON_YEAR };
 
+// Team bullpen (reliever-split) run rate per 9 innings — used to replace the
+// flat league-average bullpen run rate in the game-total model. Returns R/9
+// (falls back to ERA) keyed by teamId. Best-effort.
+export async function fetchAllTeamBullpenRates(): Promise<Map<number, number>> {
+  const url =
+    `https://statsapi.mlb.com/api/v1/teams/stats?group=pitching&season=${SEASON_YEAR}` +
+    `&sportIds=1&stats=statSplits&sitCodes=rp`;
+  const out = new Map<number, number>();
+  try {
+    const data = await fetchJson<TeamHittingResponse>(url, { timeoutMs: 8000 });
+    for (const block of data.stats ?? []) {
+      for (const split of block.splits ?? []) {
+        const r9 = num(split.stat.runsScoredPer9) ?? num(split.stat.era);
+        if (r9 !== null) out.set(split.team.id, r9);
+      }
+    }
+  } catch {
+    // best effort
+  }
+  return out;
+}
+
 export interface VsPitcherLine {
   ab: number;
   h: number;
