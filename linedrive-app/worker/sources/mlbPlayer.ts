@@ -50,6 +50,13 @@ export interface PlayerProfile {
   // Pitcher expected stats against
   xBaAgainst: number | null;
   xSlgAgainst: number | null;
+
+  // Statcast (Baseball Savant), merged in after the profile fetch
+  barrelRate?: number | null;  // batter barrel_batted_rate
+  hardHitPct?: number | null;  // batter hard_hit_percent
+  bestSpeed?: number | null;   // batter avg_best_speed
+  whiffPct?: number | null;    // pitcher whiff_percent
+  kPctSavant?: number | null;  // pitcher k_percent
 }
 
 const SEASON_YEAR = new Date().getUTCFullYear();

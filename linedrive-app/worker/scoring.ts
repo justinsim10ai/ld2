@@ -10,13 +10,14 @@ import { FACTORS } from "./factors";
 
 const WEIGHTS = {
   hr: {
-    isoOrHrPerPa: 0.30,
-    xSlg: 0.15,
-    pitcherHr9: 0.20,
-    parkFactor: 0.18,
-    windCarry: 0.08,
-    recent: 0.05,
-    handedness: 0.04,
+    isoOrHrPerPa: 0.24,
+    barrelRate: 0.14,
+    xSlg: 0.14,
+    pitcherHr9: 0.18,
+    parkFactor: 0.16,
+    windCarry: 0.07,
+    recent: 0.04,
+    handedness: 0.03,
   },
   hit: {
     xBa: 0.24,
@@ -28,11 +29,12 @@ const WEIGHTS = {
     park: 0.08,
   },
   tb: {
-    xSlg: 0.26,
+    xSlg: 0.24,
     xwoba: 0.10,
-    iso: 0.18,
-    pitcherXSlgAgainst: 0.18,
-    lineupSlot: 0.10,
+    iso: 0.14,
+    pitcherXSlgAgainst: 0.16,
+    hardHitPct: 0.10,
+    lineupSlot: 0.08,
     park: 0.10,
     handedness: 0.08,
   },
@@ -54,6 +56,9 @@ const LEAGUE_BASELINES = {
   xBa: 0.245,
   xwoba: 0.315,
   ba: 0.245,
+  barrelRate: 8.0,   // % of batted balls (Statcast league avg ~8%)
+  hardHitPct: 38.5,  // % of batted balls >= 95 mph EV
+  whiffPct: 24.5,    // whiffs per swing (%)
   pitcherHr9: 1.2,
   pitcherK9: 8.7,
   pitcherXBaAgainst: 0.245,
@@ -135,6 +140,10 @@ export function scoreHomeRun(ctx: BatterContext): Scored<BatterContext> {
   const xSlg = b.xSlgSeason ?? LEAGUE_BASELINES.xSlg;
   const xSlgZ = (xSlg - LEAGUE_BASELINES.xSlg) / 0.08;
   fb.add("xSlg", xSlg, xSlgZ, w.xSlg, FACTORS.xSlg.format(xSlg), { neutral: b.xSlgSeason == null });
+
+  const barrel = b.barrelRate ?? LEAGUE_BASELINES.barrelRate;
+  const barrelZ = (barrel - LEAGUE_BASELINES.barrelRate) / 4;
+  fb.add("barrelRate", barrel, barrelZ, w.barrelRate, FACTORS.barrelRate.format(barrel), { neutral: b.barrelRate == null });
 
   const pitcherHr9 = p?.hr9Season ?? LEAGUE_BASELINES.pitcherHr9;
   const pitcherHr9Z = (pitcherHr9 - LEAGUE_BASELINES.pitcherHr9) / 0.5;
@@ -235,12 +244,19 @@ export function scoreStrikeouts(ctx: PitcherContext): Scored<PitcherContext> {
   const oppRel = ctx.opponentTeamKPctRelLeague ?? 1.0;
   const parkMul = park.kFactor / 100;
 
-  const expectedK = (k9 / 9) * ip * oppRel * parkMul;
+  // Swinging-strike rate ("stuff") is the leading indicator of strikeouts —
+  // sharper than the outcome-based K/9. Nudge expected K up/down by how far the
+  // pitcher's whiff% sits from league average, capped to a sane band.
+  const whiff = p.whiffPct ?? LEAGUE_BASELINES.whiffPct;
+  const stuffMul = Math.min(1.25, Math.max(0.80, 1 + (whiff - LEAGUE_BASELINES.whiffPct) / LEAGUE_BASELINES.whiffPct * 0.4));
+
+  const expectedK = (k9 / 9) * ip * oppRel * parkMul * stuffMul;
 
   // Expected strikeouts is a product, not a weighted z-sum, so factors are
   // display-only (contribution 0) — they explain the inputs, not an additive split.
   const factors: PickFactor[] = [
     { id: "kRate", value: k9, contribution: 0, display: FACTORS.kRate.format(k9), neutral: p.k9Last30 == null && p.k9Season == null },
+    { id: "whiffPct", value: whiff, contribution: 0, display: FACTORS.whiffPct.format(whiff), neutral: p.whiffPct == null },
     { id: "expectedIp", value: ip, contribution: 0, display: FACTORS.expectedIp.format(ip) },
     { id: "oppKRate", value: oppRel, contribution: 0, display: FACTORS.oppKRate.format(oppRel), neutral: ctx.opponentTeamKPctRelLeague == null },
     { id: "parkK", value: park.kFactor, contribution: 0, display: FACTORS.parkK.format(park.kFactor) },
@@ -278,6 +294,10 @@ export function scoreTotalBases(ctx: BatterContext): Scored<BatterContext> {
   const iso = b.isoSeason ?? LEAGUE_BASELINES.iso;
   const isoZ = (iso - LEAGUE_BASELINES.iso) / 0.06;
   fb.add("iso", iso, isoZ, w.iso, FACTORS.iso.format(iso), { neutral: b.isoSeason == null });
+
+  const hardHit = b.hardHitPct ?? LEAGUE_BASELINES.hardHitPct;
+  const hardHitZ = (hardHit - LEAGUE_BASELINES.hardHitPct) / 6;
+  fb.add("hardHitPct", hardHit, hardHitZ, w.hardHitPct, FACTORS.hardHitPct.format(hardHit), { neutral: b.hardHitPct == null });
 
   // Real pitcher xSLG-against from MLB expectedStatistics. Fall back to an
   // xBA-against-derived proxy only when the real value is missing.

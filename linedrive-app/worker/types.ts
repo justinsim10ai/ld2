@@ -56,6 +56,8 @@ export interface BatterStats {
   xBaSeason: number | null;
   xSlgSeason: number | null;
   xwObaSeason: number | null;
+  barrelRate: number | null;   // Statcast barrel_batted_rate (%)
+  hardHitPct: number | null;   // Statcast hard_hit_percent (%)
 }
 
 export interface PitcherStats {
@@ -70,6 +72,7 @@ export interface PitcherStats {
   hr9Season: number | null;
   xBaAgainstSeason: number | null;
   xSlgAgainstSeason: number | null;
+  whiffPct: number | null;     // Statcast whiff_percent (whiffs per swing, %)
   expectedIp: number;
 }
 
