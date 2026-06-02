@@ -1,0 +1,42 @@
+name: NFL stats upload (HailMary)
+
+# nflverse weekly player stats power HailMary's player-prop model. We fetch the
+# CSV here (GitHub-hosted runner) and POST it to the HailMary worker's
+# /admin/nfl-stats ingest endpoint, which aggregates + stores it in KV.
+# (The schedule + game lines come from games.csv, fetched worker-direct.)
+#
+# Requires repo secret HAILMARY_ADMIN_KEY (= the worker's ADMIN_KEY).
+
+on:
+  schedule:
+    - cron: "0 13 * * 2" # Tue 13:00 UTC — after the week's games settle
+  workflow_dispatch: {}
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch latest nflverse player stats and upload
+        env:
+          KEY: ${{ secrets.HAILMARY_ADMIN_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEY:-}" ]; then echo "HAILMARY_ADMIN_KEY secret is not set"; exit 1; fi
+          YEAR=$(date -u +%Y)
+          BASE="https://github.com/nflverse/nflverse-data/releases/download/player_stats"
+          WORKER="https://hailmary.weregoingplaces.xyz/admin/nfl-stats"
+
+          # Use the most recent season that has data: current season in-season,
+          # else the prior completed season(s) in the offseason.
+          FOUND=""
+          for S in "$YEAR" "$((YEAR-1))" "$((YEAR-2))"; do
+            echo "== trying season $S =="
+            if curl -fsSL "$BASE/stats_player_week_$S.csv" -o stats.csv 2>/dev/null && [ "$(wc -l < stats.csv)" -gt 50 ]; then
+              echo "season $S → $(wc -l < stats.csv) rows"
+              FOUND="$S"; break
+            fi
+          done
+          if [ -z "$FOUND" ]; then echo "no player-stats file found"; exit 1; fi
+
+          echo "== uploading season $FOUND =="
+          curl -fsS -X POST --data-binary @stats.csv "$WORKER?key=$KEY"; echo

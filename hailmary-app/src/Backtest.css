@@ -1,0 +1,42 @@
+/* Backtest / track-record page. Builds on About.css shell + weights-table. */
+
+.bt-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.bt-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: rgba(7, 8, 29, 0.45);
+  border: 1px solid rgba(182, 209, 230, 0.1);
+}
+.bt-stat-value {
+  font-family: 'Funnel Display', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.9rem;
+  color: var(--og-cloud);
+  line-height: 1;
+}
+.bt-stat-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(182, 209, 230, 0.6);
+}
+.bt-stat.pos .bt-stat-value { color: #7AE3B8; }
+.bt-stat.neg .bt-stat-value { color: #E95E5E; }
+
+.bt-th { cursor: pointer; user-select: none; white-space: nowrap; }
+.bt-th:hover { color: var(--og-flame); }
+.bt-th-active { color: var(--og-flame); }
+.bt-arrow { font-size: 0.8em; }
+
+.bt-table td { font-variant-numeric: tabular-nums; }
+.bt-table .bt-muted { color: rgba(182, 209, 230, 0.55); }
+.bt-pos { color: #7AE3B8; font-weight: 700; }
+.bt-neg { color: #E95E5E; font-weight: 700; }

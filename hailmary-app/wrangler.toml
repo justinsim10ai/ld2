@@ -1,0 +1,39 @@
+name = "hailmary"
+main = "worker/index.ts"
+compatibility_date = "2026-05-06"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+routes = [
+  { pattern = "hailmary.weregoingplaces.xyz", custom_domain = true },
+]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# NFL is weekly. Games fall Thu / Sun / Mon (plus occasional Sat late season).
+# Generate the slate on game mornings, settle + email after the week wraps.
+# Cron is UTC. 14:00 UTC ~= 9am ET (well before 1pm ET kickoffs).
+[triggers]
+crons = [
+  "0 14 * * 4",   # Thu: generate Thursday-night slate
+  "0 14 * * 7",   # Sun: generate Sunday slate (the marquee)
+  "0 14 * * 1",   # Mon: generate Monday-night slate
+  "0 14 * * 2",   # Tue: settle the week's games + weekly digest
+]
+
+# KV namespace for the slate JSON payloads + archive index + nflverse stats.
+# Create with: wrangler kv namespace create HAILMARY_KV  → paste id below.
+[[kv_namespaces]]
+binding = "HAILMARY_KV"
+id = "af9f56597adb4201b19eea6cbc17247e"
+
+# R2 bucket for generated PNG assets.
+# Create with: wrangler r2 bucket create hailmary-assets
+[[r2_buckets]]
+binding = "HAILMARY_ASSETS"
+bucket_name = "hailmary-assets"
+
+# ADMIN_KEY is a secret (wrangler secret put ADMIN_KEY); gates /admin/* routes.

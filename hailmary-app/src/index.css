@@ -1,0 +1,114 @@
+@font-face {
+  font-family: 'Funnel Sans';
+  src: url('/fonts/FunnelSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Funnel Sans';
+  src: url('/fonts/FunnelSans-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Funnel Sans';
+  src: url('/fonts/FunnelSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Funnel Display';
+  src: url('/fonts/FunnelDisplay-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Funnel Display';
+  src: url('/fonts/FunnelDisplay-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-display: swap;
+}
+
+:root {
+  /* Default: generic football (emerald + gold on slate). Team themes below
+     override these six vars via [data-theme]. Var names kept from the OG
+     palette so the rest of the CSS is unchanged; fonts stay Funnel. */
+  --og-flame: #21C063;   /* primary accent  */
+  --og-sunset: #F5C04A;  /* secondary accent */
+  --og-indigo: #16221C;  /* card / panel    */
+  --og-midnight: #0A0F0C;/* page background */
+  --og-cloud: #F2F7F3;   /* primary text    */
+  --og-solace: #9FB6AE;  /* muted accent    */
+
+  --bg: var(--og-midnight);
+  --panel: var(--og-indigo);
+  --text: var(--og-cloud);
+  --muted: rgba(182, 209, 230, 0.62);
+  --accent: var(--og-flame);
+  --accent-2: var(--og-sunset);
+  --rule: rgba(182, 209, 230, 0.12);
+
+  font-family: 'Funnel Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- Selectable team themes (admin toggle). Each overrides the six palette
+   vars; --muted is re-derived so it tracks the theme. Fonts unchanged. ---- */
+[data-theme="seahawks"] {
+  --og-flame: #69BE28; --og-sunset: #A5ACAF; --og-indigo: #013A6B;
+  --og-midnight: #001326; --og-cloud: #FFFFFF; --og-solace: #69BE28;
+  --muted: rgba(165, 172, 175, 0.72);
+}
+[data-theme="chiefs"] {
+  --og-flame: #E31837; --og-sunset: #FFB81C; --og-indigo: #2A0B11;
+  --og-midnight: #0E0507; --og-cloud: #FFF5F6; --og-solace: #E8A9B0;
+  --muted: rgba(255, 184, 28, 0.55);
+}
+[data-theme="eagles"] {
+  --og-flame: #29C2B8; --og-sunset: #C9D2D3; --og-indigo: #0A2C2E;
+  --og-midnight: #02100F; --og-cloud: #ECF6F5; --og-solace: #8FB3B0;
+  --muted: rgba(201, 210, 211, 0.55);
+}
+[data-theme="niners"] {
+  --og-flame: #C8102E; --og-sunset: #B3995D; --og-indigo: #2A0E11;
+  --og-midnight: #140709; --og-cloud: #F7EEEF; --og-solace: #C9A36A;
+  --muted: rgba(179, 153, 93, 0.6);
+}
+[data-theme="ravens"] {
+  --og-flame: #8B5CF6; --og-sunset: #C9A227; --og-indigo: #1A1450;
+  --og-midnight: #0B0820; --og-cloud: #F2EFFB; --og-solace: #B8A9E0;
+  --muted: rgba(184, 169, 224, 0.6);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(249, 98, 0, 0.10), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(18, 27, 56, 0.55), transparent 50%),
+    var(--bg);
+}
+
+button, input, textarea, select { font: inherit; }
+
+img { max-width: 100%; display: block; }
+
+#root { min-height: 100vh; }
+
+h1, h2, h3, h4, h5 {
+  margin: 0;
+  font-family: 'Funnel Display', 'Funnel Sans', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+p { margin: 0; }
