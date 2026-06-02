@@ -79,13 +79,18 @@ function imgUrl(payload, filename) {
   const date = payload.date
   const league = payload.league ?? 'mlb'
   if (!filename) return ''
-  return `/img/r/${league}/${date}/${filename}`
+  // Images are served with a 1h CDN cache under stable filenames, so re-renders
+  // (e.g. once OG odds get priced) wouldn't show. Cache-bust on generatedAtIso
+  // so each pipeline run forces a fresh fetch.
+  const v = payload.generatedAtIso ? `?v=${encodeURIComponent(payload.generatedAtIso)}` : ''
+  return `/img/r/${league}/${date}/${filename}${v}`
 }
 
 function downloadUrl(payload, filename, downloadName) {
   const u = imgUrl(payload, filename)
   if (!u) return null
-  return `${u}?download=${encodeURIComponent(downloadName)}`
+  const sep = u.includes('?') ? '&' : '?'
+  return `${u}${sep}download=${encodeURIComponent(downloadName)}`
 }
 
 function dlName(category, dateIso, suffix = '') {
