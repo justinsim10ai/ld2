@@ -44,6 +44,7 @@ export interface PlayerProfile {
 
   // Pitching
   ipSeason: number;
+  gsSeason: number;        // games started — for real IP/start
   k9Season: number | null;
   hr9Season: number | null;
   k9Last30: number | null;
@@ -94,6 +95,7 @@ function profileFrom(p: PeopleResponse["people"][number]): PlayerProfile {
     xSlg: null,
     xwOba: null,
     ipSeason: 0,
+    gsSeason: 0,
     k9Season: null,
     hr9Season: null,
     k9Last30: null,
@@ -126,6 +128,7 @@ function profileFrom(p: PeopleResponse["people"][number]): PlayerProfile {
       } else if (groupName === "pitching") {
         if (typeName === "season") {
           profile.ipSeason = num(s.inningsPitched) ?? 0;
+          profile.gsSeason = num(s.gamesStarted) ?? 0;
           profile.k9Season = num(s.strikeoutsPer9Inn);
           profile.hr9Season = num(s.homeRunsPer9);
         } else if (typeName === "lastXGames") {

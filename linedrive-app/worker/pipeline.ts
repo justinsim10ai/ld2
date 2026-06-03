@@ -532,9 +532,12 @@ function buildBatterStats(id: number, team: TeamRef, profile: PlayerProfile): Ba
 function buildPitcherStats(id: number, team: TeamRef, profiles: Map<number, PlayerProfile>): PitcherStats | null {
   const profile = profiles.get(id);
   if (!profile) return null;
-  const expectedIp = profile.ipSeason > 0
-    ? Math.min(6.5, Math.max(4.0, profile.ipSeason / Math.max(1, Math.floor(profile.ipSeason / 5))))
-    : 5.5;
+  // Real innings per start = season IP / games started, clamped to a sane
+  // range. (The old formula divided IP by floor(IP/5), which algebraically
+  // collapsed to ~5.0 for every pitcher — so Outs/K barely differentiated.)
+  const expectedIp = profile.gsSeason > 0
+    ? Math.min(7.0, Math.max(3.5, profile.ipSeason / profile.gsSeason))
+    : 5.0;
   return {
     playerId: id,
     fullName: profile.fullName,

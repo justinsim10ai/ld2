@@ -40,3 +40,6 @@
 .bt-table .bt-muted { color: rgba(182, 209, 230, 0.55); }
 .bt-pos { color: #7AE3B8; font-weight: 700; }
 .bt-neg { color: #E95E5E; font-weight: 700; }
+
+.bt-tiers { font-variant-numeric: tabular-nums; font-weight: 600; }
+.bt-tier-sep { color: var(--muted); margin: 0 8px; font-weight: 400; }

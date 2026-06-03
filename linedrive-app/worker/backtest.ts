@@ -18,6 +18,8 @@ export interface CategoryStats {
   profit: number;                      // net $ on flat $10 stakes
   roi: number | null;                  // profit / staked
   marketImpliedHitRate: number | null; // avg OG implied prob over priced picks
+  edge: number | null;                 // hitRate − marketImpliedHitRate (model skill vs market)
+  rankTiers: (number | null)[];        // hit rate for ranks 1-5 / 6-10 / 11-15 (does ranking work?)
 }
 
 export interface BacktestReport {
@@ -29,19 +31,27 @@ export interface BacktestReport {
   byCategory: Record<string, CategoryStats>;
 }
 
-interface Acc { picks: number; wins: number; pricedPicks: number; staked: number; profit: number; mktSum: number; }
-const emptyAcc = (): Acc => ({ picks: 0, wins: 0, pricedPicks: 0, staked: 0, profit: 0, mktSum: 0 });
+interface Acc {
+  picks: number; wins: number; pricedPicks: number; staked: number; profit: number; mktSum: number;
+  tiers: [number, number][]; // [picks, wins] for ranks 1-5 / 6-10 / 11-15
+}
+const emptyAcc = (): Acc => ({ picks: 0, wins: 0, pricedPicks: 0, staked: 0, profit: 0, mktSum: 0, tiers: [[0, 0], [0, 0], [0, 0]] });
+const tierIndex = (rank: number): number => (rank <= 5 ? 0 : rank <= 10 ? 1 : 2);
 
 function finalize(a: Acc): CategoryStats {
+  const hitRate = a.picks ? a.wins / a.picks : null;
+  const mkt = a.pricedPicks ? a.mktSum / a.pricedPicks : null;
   return {
     picks: a.picks,
     wins: a.wins,
-    hitRate: a.picks ? a.wins / a.picks : null,
+    hitRate,
     pricedPicks: a.pricedPicks,
     staked: a.staked,
     profit: Math.round(a.profit * 100) / 100,
     roi: a.staked ? a.profit / a.staked : null,
-    marketImpliedHitRate: a.pricedPicks ? a.mktSum / a.pricedPicks : null,
+    marketImpliedHitRate: mkt,
+    edge: hitRate != null && mkt != null ? hitRate - mkt : null,
+    rankTiers: a.tiers.map(([p, w]) => (p ? w / p : null)),
   };
 }
 
@@ -71,6 +81,9 @@ export async function computeBacktest(env: Env, league: League): Promise<Backtes
         const acc = byCat[cat];
         acc.picks++; overall.picks++;
         if (r.hit) { acc.wins++; overall.wins++; }
+        const ti = tierIndex(p.rank);
+        acc.tiers[ti][0]++; overall.tiers[ti][0]++;
+        if (r.hit) { acc.tiers[ti][1]++; overall.tiers[ti][1]++; }
         if (r.payoutDollars !== null && r.payoutDollars !== undefined) {
           acc.pricedPicks++; overall.pricedPicks++;
           acc.staked += 10; overall.staked += 10;

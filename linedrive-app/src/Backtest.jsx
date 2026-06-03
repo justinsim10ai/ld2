@@ -22,10 +22,25 @@ const COLUMNS = [
   { key: 'category', label: 'Category', numeric: false },
   { key: 'picks', label: 'Picks', numeric: true },
   { key: 'hitRate', label: 'Hit rate', numeric: true },
-  { key: 'marketImpliedHitRate', label: 'Market implied', numeric: true },
+  { key: 'marketImpliedHitRate', label: 'Mkt implied', numeric: true },
+  { key: 'edge', label: 'Edge vs mkt', numeric: true },
   { key: 'roi', label: 'ROI', numeric: true },
   { key: 'profit', label: 'Profit', numeric: true },
 ]
+
+// Hit rate by model rank tier — shows whether the ranking has signal.
+function RankTiers({ tiers }) {
+  if (!tiers) return <span className="bt-muted">—</span>
+  const fmt = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`)
+  return (
+    <span className="bt-tiers" title="Hit rate for the model's #1–5, #6–10, and #11–15 ranked picks">
+      <span>{fmt(tiers[0])}</span><span className="bt-tier-sep">›</span>
+      <span>{fmt(tiers[1])}</span><span className="bt-tier-sep">›</span>
+      <span>{fmt(tiers[2])}</span>
+    </span>
+  )
+}
+const edgeStr = (v) => (v == null ? '—' : `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(0)} pts`)
 
 export default function Backtest({ onBack }) {
   const [data, setData] = useState(null)
@@ -139,6 +154,7 @@ export default function Backtest({ onBack }) {
                       <td>{s.picks}</td>
                       <td>{pct(s.hitRate)}</td>
                       <td className="bt-muted">{pct(s.marketImpliedHitRate)}</td>
+                      <td className={`bt-${toneOf(s.edge)}`}>{edgeStr(s.edge)}</td>
                       <td className={`bt-${toneOf(s.roi)}`}>{roiStr(s.roi)}</td>
                       <td className={`bt-${toneOf(s.profit)}`}>{money(s.profit)}</td>
                     </tr>
@@ -146,9 +162,34 @@ export default function Backtest({ onBack }) {
               </tbody>
             </table>
             <p className="muted-note">
-              &ldquo;Market implied&rdquo; is the average win probability the OG line assigned to our
-              picks. When our hit rate beats it, the model is finding edges the market missed.
+              <strong>Edge vs mkt</strong> = our hit rate minus the win probability the OG line
+              implied for the same picks. Positive means the model is finding value the market
+              missed; negative means we&rsquo;re overrating these picks relative to a sharper line.
             </p>
+          </section>
+
+          <section className="doc-section">
+            <h2>Does the ranking work?</h2>
+            <p className="muted-note" style={{ marginBottom: 12 }}>
+              Hit rate for each category by model rank tier &mdash; <strong>#1–5 › #6–10 › #11–15</strong>.
+              If the model sorts well, the top tier should hit most. A flat or inverted line means the
+              score isn&rsquo;t separating the best picks yet.
+            </p>
+            <table className="weights-table bt-table">
+              <thead><tr><th>Category</th><th>#1–5 › #6–10 › #11–15</th></tr></thead>
+              <tbody>
+                {CATEGORY_ORDER.map((c) => {
+                  const s = data.byCategory[c]
+                  if (!s) return null
+                  return (
+                    <tr key={c}>
+                      <td>{CATEGORY_LABELS[c] ?? c}</td>
+                      <td><RankTiers tiers={s.rankTiers} /></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </section>
         </>
       )}
