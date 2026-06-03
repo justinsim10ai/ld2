@@ -143,6 +143,7 @@ export interface Pick {
   signals: string[];
   factors?: PickFactor[];            // structured per-factor breakdown (player props only)
   dataQuality?: DataQuality;         // data-completeness flags for this pick
+  modelProb?: number | null;         // calibrated hit probability (0..1), null if uncalibrated
   marketPct: number | null;          // OG implied probability, 0..1
   marketOddsAmerican: number | null; // Yes-side American odds (-110, +260, ...)
   marketLine: string | null;         // Pre-formatted "15% / +566" label for card display

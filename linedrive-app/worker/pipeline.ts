@@ -39,6 +39,8 @@ import {
 import type { GameScoringContext } from "./scoring";
 import { pLimit } from "./sources/http";
 import { renderLeaderboards, renderHighlights } from "./render";
+import { readCalibration, applyCalibration } from "./calibration";
+import type { PlayerCategory } from "./types";
 
 const PICKS_PER_CATEGORY = 15;
 const HIGHLIGHT_COUNT = 4;
@@ -280,6 +282,15 @@ export async function runDailyPipeline(
       p.marketOverLine = m.line;
       p.marketOddsAmerican = m.overOdds ?? null;
     }
+  }
+
+  // Calibrated hit probability per player pick (from the archive's settled
+  // results). Display-only; falls back to category base rate / null when the
+  // fit isn't trustworthy yet. See worker/calibration.ts.
+  const calibration = await readCalibration(env, LEAGUE);
+  for (const [cat, picks] of [["hr", hrPicks], ["hit", hitPicks], ["tb", tbPicks], ["rbi", rbiPicks], ["k", kPicks], ["outs", outsPicks]] as const) {
+    const cal = calibration[cat as PlayerCategory];
+    for (const p of picks) p.modelProb = applyCalibration(p.score, cal);
   }
 
   // Phase A: render the 7 leaderboard PNGs (one per category). Highlights are

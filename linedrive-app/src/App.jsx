@@ -363,6 +363,12 @@ function formatEdge(edge) {
   return '—'
 }
 
+// Probabilistic edge (calibrated model prob − market implied), in percentage points.
+function formatProbEdge(v) {
+  if (v == null) return '—'
+  return `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(0)} pts`
+}
+
 // A holistic data-confidence read for a pick, derived from existing flags.
 // Returns { level: 'high'|'med'|'low', reasons }. High = full data; lower when
 // the matchup is unconfirmed or factors are leaning on league-average fallbacks.
@@ -406,13 +412,16 @@ function FactorTable({ block, category, oddsMode, goFactor }) {
     const marketRank = new Map(byMarket.map((p, i) => [pickKey(p), i + 1]))
     const arr = picks.map((p) => {
       const k = pickKey(p)
-      const edge = modelRank.has(k) ? marketRank.get(k) - modelRank.get(k) : null
+      const rankEdge = modelRank.has(k) ? marketRank.get(k) - modelRank.get(k) : null
+      // True probabilistic edge once calibrated: our hit prob − market implied.
+      const probEdge = (p.modelProb != null && p.marketPct != null) ? p.modelProb - p.marketPct : null
       const modelNorm = (p.score - min) / span
-      // Priced picks blend model + market; unpriced fall back to model alone, halved so they don't dominate.
       const blend = p.marketPct != null ? 0.5 * modelNorm + 0.5 * p.marketPct : 0.5 * modelNorm
-      return { p, edge, blend }
+      return { p, edge: probEdge ?? null, rankEdge, probEdge, blend }
     })
-    if (sortMode === 'edge') arr.sort((a, b) => (b.edge ?? -Infinity) - (a.edge ?? -Infinity))
+    // Sort by true edge when any pick has it, else fall back to ordinal rank edge.
+    const anyProbEdge = arr.some((x) => x.probEdge != null)
+    if (sortMode === 'edge') arr.sort((a, b) => ((anyProbEdge ? (b.probEdge ?? -Infinity) - (a.probEdge ?? -Infinity) : (b.rankEdge ?? -Infinity) - (a.rankEdge ?? -Infinity))))
     else if (sortMode === 'blend') arr.sort((a, b) => b.blend - a.blend)
     return arr
   }, [block.picks, sortMode])
@@ -466,12 +475,13 @@ function FactorTable({ block, category, oddsMode, goFactor }) {
                   </button>
                 </th>
               ))}
+              <th className="col-model" title="Calibrated hit probability from settled results">Model %</th>
               <th className="col-score">{sortMode === 'edge' ? 'Edge' : 'Score'}</th>
               <th className="col-market">Market</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ p, edge }) => {
+            {rows.map(({ p, probEdge, rankEdge }) => {
               const key = pickKey(p)
               const fmap = Object.fromEntries((p.factors ?? []).map((x) => [x.id, x]))
               const isOpen = expanded.has(key)
@@ -502,12 +512,13 @@ function FactorTable({ block, category, oddsMode, goFactor }) {
                       ].filter(Boolean).join(' ')
                       return <td key={f.id} className={cls}>{pf ? pf.display : '—'}</td>
                     })}
-                    <td className="score">{sortMode === 'edge' ? formatEdge(edge) : p.scoreLabel}</td>
+                    <td className="col-model">{p.modelProb != null ? `${Math.round(p.modelProb * 100)}%` : '—'}</td>
+                    <td className="score">{sortMode === 'edge' ? (probEdge != null ? formatProbEdge(probEdge) : formatEdge(rankEdge)) : p.scoreLabel}</td>
                     <td className="col-market">{formatMarket(p.marketPct, p.marketOddsAmerican, oddsMode)}</td>
                   </tr>
                   {isOpen && (
                     <tr className="factor-detail-row">
-                      <td colSpan={cols.length + 4}>
+                      <td colSpan={cols.length + 5}>
                         <div className="factor-detail">
                           {(p.factors ?? []).map((pf) => {
                             const def = FACTORS[pf.id]

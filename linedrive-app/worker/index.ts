@@ -4,6 +4,7 @@ import { settlePayload, renderAndPersistSettled, runSettlementPhase } from "./se
 import { sendDailyDigest } from "./mailer";
 import { storeSavantCsv, readSavant } from "./sources/savant";
 import { computeBacktest } from "./backtest";
+import { computeCalibration, storeCalibration, readCalibration } from "./calibration";
 
 const DIGEST_RECIPIENT = "justin.snider@crypto.com";
 
@@ -60,6 +61,9 @@ export default {
     if (p === "/admin/savant") {
       return handleSavantIngest(request, env);
     }
+    if (p === "/admin/calibrate") {
+      return handleCalibrate(request, env);
+    }
 
     // /r/mlb-2026-05-26 → serve SPA shell; SPA reads the slug.
     // /factors and /factors/<id> → SPA shell; SPA renders the factor pages.
@@ -78,10 +82,12 @@ export default {
     if (event.cron === "0 11 * * *") {
       const yesterday = isoFromOffset(-1);
       ctx.waitUntil(
-        settlePayload(env, yesterday).then(
-          (r) => console.log(`[scheduled] ${yesterday} settlement A done: ${r.outcome.picksUpdated} picks`),
-          (err) => console.error(`[scheduled] ${yesterday} settlement A failed`, err),
-        ),
+        settlePayload(env, yesterday)
+          .then((r) => console.log(`[scheduled] ${yesterday} settlement A done: ${r.outcome.picksUpdated} picks`))
+          // Refit calibration once the new day's results are in.
+          .then(() => computeCalibration(env, "mlb").then((cal) => storeCalibration(env, "mlb", cal)))
+          .then(() => console.log(`[scheduled] calibration refit`))
+          .catch((err) => console.error(`[scheduled] ${yesterday} settlement A / calibration failed`, err)),
       );
       return;
     }
@@ -275,6 +281,28 @@ async function handleSavantIngest(request: Request, env: Env): Promise<Response>
     return jsonResponse({ status: "done", type, stored });
   } catch (err) {
     console.error("[savant-ingest] failed", err);
+    return jsonResponse({ status: "error", error: String(err) }, 500);
+  }
+}
+
+// Refit the score→hit-probability calibration from the settled archive and
+// store it. GET returns the current calibration (per-category slope + sample).
+async function handleCalibrate(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const provided = url.searchParams.get("key") ?? "";
+  if (!env.ADMIN_KEY || provided !== env.ADMIN_KEY) {
+    return new Response("forbidden", { status: 403 });
+  }
+  if (request.method === "GET") {
+    return jsonResponse({ status: "ok", calibration: await readCalibration(env, "mlb") });
+  }
+  try {
+    const cal = await computeCalibration(env, "mlb");
+    await storeCalibration(env, "mlb", cal);
+    const summary = Object.fromEntries(Object.entries(cal).map(([c, v]) => [c, { n: v.n, b: Math.round(v.b * 100) / 100, baseRate: Math.round(v.baseRate * 100) / 100 }]));
+    return jsonResponse({ status: "done", categories: Object.keys(cal).length, summary });
+  } catch (err) {
+    console.error("[calibrate] failed", err);
     return jsonResponse({ status: "error", error: String(err) }, 500);
   }
 }
