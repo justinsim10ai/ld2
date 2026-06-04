@@ -3,6 +3,7 @@ import { fetchHitterResults, fetchPitcherResults } from "./sources/mlbResult";
 import type { HitterGameResult, PitcherGameResult } from "./sources/mlbResult";
 import { renderSettledHighlights, renderSettledLeaderboards } from "./render";
 import { writeArchiveAndMaybeAdvanceLatest } from "./pipeline";
+import { settlePool } from "./pool";
 
 const LEAGUE: League = "mlb";
 
@@ -122,6 +123,14 @@ export async function renderAndPersistSettled(env: Env, payload: DailyPayload): 
  */
 export async function runSettlementPhase(env: Env, dateIso: string): Promise<{ outcome: SettlementOutcome; rendered: number }> {
   const { outcome, payload } = await settlePayload(env, dateIso);
+  // Settle the full candidate pool too (every player, not just the top-15) so
+  // the re-rank harness has real outcomes. Best-effort — never block rendering.
+  try {
+    const ps = await settlePool(env, LEAGUE, dateIso);
+    outcome.notes.push(`pool settled: ${ps.batters} batters, ${ps.pitchers} pitchers`);
+  } catch (err) {
+    console.error(`[settlement] pool settle failed for ${dateIso}`, err);
+  }
   const renderResult = await renderAndPersistSettled(env, payload);
   return { outcome, rendered: renderResult.rendered };
 }
@@ -193,7 +202,7 @@ function pickStatFromPitcher(cat: Category, r: PitcherGameResult): number {
 // HR/Hit are binary YES markets — effectively over 0.5 (any ≥1 wins).
 // TB/RBI/K/outs use the captured OG line, falling back to common defaults
 // when OG didn't price it.
-function thresholdFor(cat: Category, marketOverLine: number | null): number {
+export function thresholdFor(cat: Category, marketOverLine: number | null): number {
   if (marketOverLine !== null && marketOverLine !== undefined) return marketOverLine;
   switch (cat) {
     case "hr":   return 0.5;

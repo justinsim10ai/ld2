@@ -1,6 +1,8 @@
 import type { Env, DailyPayload, League } from "./types";
 import { runDailyPipeline, runHighlightPhase, readArchiveIndex } from "./pipeline";
 import { settlePayload, renderAndPersistSettled, runSettlementPhase } from "./settlement";
+import { settlePool } from "./pool";
+import { computeRerank, RERANK_ALGORITHMS } from "./rerank";
 import { sendDailyDigest } from "./mailer";
 import { storeSavantCsv, readSavant } from "./sources/savant";
 import { computeBacktest } from "./backtest";
@@ -64,6 +66,9 @@ export default {
     if (p === "/admin/calibrate") {
       return handleCalibrate(request, env);
     }
+    if (p === "/admin/rerank") {
+      return handleRerank(request, env);
+    }
 
     // /r/mlb-2026-05-26 → serve SPA shell; SPA reads the slug.
     // /factors and /factors/<id> → SPA shell; SPA renders the factor pages.
@@ -84,6 +89,9 @@ export default {
       ctx.waitUntil(
         settlePayload(env, yesterday)
           .then((r) => console.log(`[scheduled] ${yesterday} settlement A done: ${r.outcome.picksUpdated} picks`))
+          // Settle the full candidate pool too (for the re-rank harness).
+          .then(() => settlePool(env, "mlb", yesterday))
+          .then((ps) => console.log(`[scheduled] ${yesterday} pool settled: ${ps.batters} batters, ${ps.pitchers} pitchers`))
           // Refit calibration once the new day's results are in.
           .then(() => computeCalibration(env, "mlb").then((cal) => storeCalibration(env, "mlb", cal)))
           .then(() => console.log(`[scheduled] calibration refit`))
@@ -303,6 +311,34 @@ async function handleCalibrate(request: Request, env: Env): Promise<Response> {
     return jsonResponse({ status: "done", categories: Object.keys(cal).length, summary });
   } catch (err) {
     console.error("[calibrate] failed", err);
+    return jsonResponse({ status: "error", error: String(err) }, 500);
+  }
+}
+
+// Re-rank harness: replay one or more named scoring algorithms over the settled
+// candidate pools and report hit-rate / ROI / rank-tiers. A/B with
+// ?algo=current,log5 (comma-separated). Optional ?from=&to=&n= window/top-N.
+async function handleRerank(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const provided = url.searchParams.get("key") ?? "";
+  if (!env.ADMIN_KEY || provided !== env.ADMIN_KEY) {
+    return new Response("forbidden", { status: 403 });
+  }
+  const names = (url.searchParams.get("algo") ?? "current")
+    .split(",").map((s) => s.trim()).filter(Boolean);
+  const from = url.searchParams.get("from") ?? undefined;
+  const to = url.searchParams.get("to") ?? undefined;
+  const n = parseInt(url.searchParams.get("n") ?? "", 10);
+  const topN = Number.isFinite(n) && n > 0 ? n : undefined;
+  const unknown = names.filter((nm) => !RERANK_ALGORITHMS[nm]);
+  if (unknown.length) {
+    return jsonResponse({ error: `unknown algorithm(s): ${unknown.join(", ")}`, available: Object.keys(RERANK_ALGORITHMS) }, 400);
+  }
+  try {
+    const reports = await Promise.all(names.map((nm) => computeRerank(env, "mlb", nm, { from, to, topN })));
+    return jsonResponse({ status: "done", reports });
+  } catch (err) {
+    console.error("[rerank] failed", err);
     return jsonResponse({ status: "error", error: String(err) }, 500);
   }
 }

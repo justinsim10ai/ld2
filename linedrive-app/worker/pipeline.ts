@@ -40,6 +40,7 @@ import type { GameScoringContext } from "./scoring";
 import { pLimit } from "./sources/http";
 import { renderLeaderboards, renderHighlights } from "./render";
 import { readCalibration, applyCalibration } from "./calibration";
+import { serializePool, stampGamePks, writePool } from "./pool";
 import type { PlayerCategory } from "./types";
 
 const PICKS_PER_CATEGORY = 15;
@@ -256,6 +257,19 @@ export async function runDailyPipeline(
     playerNameById,
     playerToGamePk,
   );
+
+  // Snapshot the full candidate pool (every batter/pitcher, not just the top-15)
+  // with its market, so any scorer can be re-ranked against real settled slates
+  // later. Outcomes are attached at settlement (settlePool). Best-effort — a
+  // capture failure must never block the day's picks.
+  try {
+    const pool = serializePool(LEAGUE, dateIso, batterContexts, pitcherContexts, market);
+    stampGamePks(pool, playerToGamePk);
+    await writePool(env, pool);
+    console.log(`[pipeline] pool captured: ${pool.batters.length} batters, ${pool.pitchers.length} pitchers`);
+  } catch (err) {
+    console.error(`[pipeline] pool capture failed`, err);
+  }
 
   // Rank
   const hrPicks   = rankBatters(batterContexts, scoreHomeRun, PICKS_PER_CATEGORY);
