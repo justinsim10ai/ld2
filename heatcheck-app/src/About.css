@@ -1,0 +1,203 @@
+.about-shell { gap: 28px; }
+
+.about-hero .hero-copy h1 {
+  font-size: clamp(2.2rem, 4vw, 3rem);
+}
+
+.doc-section {
+  background: var(--og-indigo);
+  border: 1px solid rgba(182, 209, 230, 0.08);
+  border-radius: 22px;
+  padding: 28px 32px;
+}
+
+.doc-section h2 {
+  margin: 0 0 14px;
+  font-family: 'Funnel Display', sans-serif;
+  font-weight: 800;
+  font-size: 1.55rem;
+  color: var(--og-cloud);
+  letter-spacing: -0.01em;
+}
+
+.doc-section h3 {
+  margin: 22px 0 10px;
+  font-family: 'Funnel Display', sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--og-cloud);
+}
+
+.doc-section .cat-h3 {
+  color: var(--og-flame);
+  margin-top: 26px;
+  letter-spacing: 0.01em;
+}
+
+.doc-section p {
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.62;
+  margin-bottom: 10px;
+}
+
+.doc-section p code,
+.doc-section li code {
+  background: rgba(7, 8, 29, 0.55);
+  border: 1px solid rgba(182, 209, 230, 0.08);
+  color: var(--og-cloud);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.86em;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+.doc-section ul,
+.doc-section ol {
+  margin: 8px 0 6px;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.doc-section li { padding-left: 18px; position: relative; }
+.doc-section li::before {
+  content: "•";
+  color: var(--og-flame);
+  font-weight: 800;
+  position: absolute;
+  left: 0;
+}
+
+.doc-section ol { counter-reset: step; }
+.doc-section ol li {
+  padding-left: 36px;
+}
+.doc-section ol li::before {
+  counter-increment: step;
+  content: counter(step);
+  background: rgba(249, 98, 0, 0.16);
+  color: var(--og-flame);
+  width: 26px;
+  height: 26px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  font-family: 'Funnel Display', sans-serif;
+  font-weight: 800;
+  font-size: 0.86rem;
+  top: 0;
+}
+
+.doc-section li strong { color: var(--og-cloud); }
+
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.source-card {
+  background: rgba(7, 8, 29, 0.45);
+  border: 1px solid rgba(182, 209, 230, 0.08);
+  border-radius: 16px;
+  padding: 20px 22px;
+}
+
+.source-card.og-pending { border-color: rgba(249, 98, 0, 0.4); }
+
+.source-card h3 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tag-pill {
+  font-family: 'Funnel Sans', sans-serif;
+  font-size: 0.66rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(182, 209, 230, 0.12);
+  color: var(--og-solace);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.source-card.og-pending .tag-pill {
+  background: rgba(249, 98, 0, 0.18);
+  color: var(--og-flame);
+}
+
+.weights-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 0.92rem;
+  color: var(--og-cloud);
+}
+
+.weights-table th,
+.weights-table td {
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.weights-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  border-bottom: 1px solid rgba(182, 209, 230, 0.12);
+  font-weight: 600;
+}
+
+.weights-table tr + tr td { border-top: 1px solid rgba(182, 209, 230, 0.06); }
+
+.weights-table td:nth-child(2) {
+  font-family: 'Funnel Display', sans-serif;
+  font-weight: 800;
+  color: var(--og-flame);
+}
+
+.code-line {
+  background: rgba(7, 8, 29, 0.5);
+  border-left: 3px solid var(--og-flame);
+  padding: 12px 16px;
+  border-radius: 0 12px 12px 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.85rem;
+  color: var(--og-cloud);
+  margin: 12px 0 18px;
+}
+
+.code-line code { background: none; border: none; padding: 0; color: inherit; }
+
+.proj-tag-doc {
+  display: inline-block;
+  padding: 2px 8px;
+  margin: 0 4px;
+  border-radius: 999px;
+  background: rgba(255, 185, 0, 0.18);
+  color: var(--og-sunset);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.caveats li, .stack-list li { font-size: 0.95rem; }
+
+@media (max-width: 720px) {
+  .source-grid { grid-template-columns: 1fr; }
+  .doc-section { padding: 22px 20px; }
+}

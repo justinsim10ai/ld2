@@ -1,0 +1,35 @@
+{
+  "name": "heatcheck-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "worker:dev": "wrangler dev --local",
+    "worker:dev:scheduled": "wrangler dev --local --test-scheduled",
+    "worker:deploy": "wrangler deploy",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "@eslint/js": "^10.0.1",
+    "@resvg/resvg-wasm": "^2.6.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "satori": "^0.10.13",
+    "vite": "^8.0.12",
+    "wrangler": "^4.20.0"
+  }
+}

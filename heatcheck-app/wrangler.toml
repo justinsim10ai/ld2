@@ -1,0 +1,54 @@
+name = "heatcheck"
+main = "worker/index.ts"
+compatibility_date = "2026-05-06"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+routes = [
+  { pattern = "heatcheck.weregoingplaces.xyz", custom_domain = true },
+]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# Daily NBA crawls (in-season Oct–Jun). Same split-firing pattern as LineDrive so
+# each cron gets its own Worker memory budget.
+#  - 11:00 UTC: settlement phase A — fetch yesterday's NBA box scores, decorate picks + pool
+#  - 11:02 UTC: settlement phase B — render settled highlight PNGs for yesterday
+#  - 15:00 UTC: today's slate, full render
+#  - 15:02 UTC: today phase B (highlight PNGs)
+#  - 15:05 UTC: tomorrow's slate, leaderboards only
+#  - 15:10 UTC: day-after slate, leaderboards only
+#  - 15:15 UTC: daily digest email
+# NBA games finish by ~07:00 UTC, so 11:00 UTC settlement is safe. Injury reports
+# firm up late afternoon ET — a Phase 2 refinement may add a later same-day refresh.
+[triggers]
+crons = [
+  "0 11 * * *",   # yesterday settlement phase A (fetch + decorate)
+  "2 11 * * *",   # yesterday settlement phase B (render settled PNGs)
+  "0 15 * * *",   # today phase A (data + leaderboards)
+  "2 15 * * *",   # today phase B (highlight PNGs)
+  "5 15 * * *",   # day+1 phase A (leaderboards only)
+  "10 15 * * *",  # day+2 phase A (leaderboards only)
+  "15 15 * * *",  # daily digest email
+]
+
+# KV namespace for the daily JSON payload + archive + pool.
+# Create with: wrangler kv namespace create HEATCHECK_KV
+# Then paste the returned id below (placeholder until created).
+[[kv_namespaces]]
+binding = "HEATCHECK_KV"
+id = "REPLACE_WITH_HEATCHECK_KV_ID"
+
+# R2 bucket for generated PNG assets.
+# Create with: wrangler r2 bucket create heatcheck-assets
+[[r2_buckets]]
+binding = "HEATCHECK_ASSETS"
+bucket_name = "heatcheck-assets"
+
+# Secrets (set via `wrangler secret put <NAME>`):
+#   ADMIN_KEY      — gates /admin/* endpoints
+#   ODDS_API_KEY   — the-odds-api.com (NBA player props: edge/ROI/backtest)
+#   RESEND_API_KEY — daily digest email
