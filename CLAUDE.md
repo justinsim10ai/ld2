@@ -10,13 +10,14 @@ Branches: `main` (canonical) and feature branches like `heatcheck-nba`.
   `[assets] directory = "./site"`) to `weregoingplaces.xyz` + `www.`.
 - **`linedrive-app/`** → linedrive.weregoingplaces.xyz (MLB prop projections)
 - **`hailmary-app/`** → hailmary.weregoingplaces.xyz (NFL prop projections)
-- **`heatcheck-app/`** → heatcheck.weregoingplaces.xyz (NBA fork of LineDrive)
   Each app is **Vite (frontend) + a Cloudflare Worker** (`worker/`, `wrangler.toml`).
+- _Not on `main` yet:_ a `heatcheck-app/` (heatcheck.weregoingplaces.xyz, NBA fork of LineDrive)
+  lives only on the unmerged **`heatcheck-nba`** feature branch — it does not exist in this tree.
 - `templates/`, `design_handoff_personal_website/` — supporting assets.
 - `.github/workflows/` — scheduled data jobs (`nfl-stats.yml`, `savant.yml`).
 
 ## Run / build / deploy (per app)
-From inside an app dir (`linedrive-app/`, `hailmary-app/`, `heatcheck-app/`):
+From inside an app dir (`linedrive-app/`, `hailmary-app/`):
 ```bash
 npm install
 npm run dev            # Vite dev server
