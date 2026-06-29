@@ -3,12 +3,9 @@ import { runDailyPipeline, runHighlightPhase, readArchiveIndex } from "./pipelin
 import { settlePayload, renderAndPersistSettled, runSettlementPhase } from "./settlement";
 import { settlePool } from "./pool";
 import { computeRerank, RERANK_ALGORITHMS } from "./rerank";
-import { sendDailyDigest } from "./mailer";
 import { storeSavantCsv, readSavant } from "./sources/savant";
 import { computeBacktest } from "./backtest";
 import { computeCalibration, storeCalibration, readCalibration } from "./calibration";
-
-const DIGEST_RECIPIENT = "justin.snider@crypto.com";
 
 const LEAGUES: League[] = ["mlb"];
 
@@ -56,9 +53,6 @@ export default {
     }
     if (p === "/admin/settle") {
       return handleSettle(request, env);
-    }
-    if (p === "/admin/send-digest") {
-      return handleSendDigest(request, env);
     }
     if (p === "/admin/savant") {
       return handleSavantIngest(request, env);
@@ -113,17 +107,6 @@ export default {
           const r = await renderAndPersistSettled(env, payload);
           console.log(`[scheduled] ${yesterday} settlement B done: ${r.rendered} settled PNGs`);
         })().catch((err) => console.error(`[scheduled] ${yesterday} settlement B failed`, err)),
-      );
-      return;
-    }
-    if (event.cron === "15 15 * * *") {
-      const today = isoFromOffset(0);
-      const yesterday = isoFromOffset(-1);
-      ctx.waitUntil(
-        sendDailyDigest(env, { toEmail: DIGEST_RECIPIENT, picksDate: today, resultsDate: yesterday }).then(
-          (r) => console.log(`[scheduled] digest sent: id=${r.id} attached=${r.attached} notes=${r.notes.join("; ")}`),
-          (err) => console.error(`[scheduled] digest failed`, err),
-        ),
       );
       return;
     }
@@ -339,25 +322,6 @@ async function handleRerank(request: Request, env: Env): Promise<Response> {
     return jsonResponse({ status: "done", reports });
   } catch (err) {
     console.error("[rerank] failed", err);
-    return jsonResponse({ status: "error", error: String(err) }, 500);
-  }
-}
-
-async function handleSendDigest(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const provided = url.searchParams.get("key") ?? "";
-  if (!env.ADMIN_KEY || provided !== env.ADMIN_KEY) {
-    return new Response("forbidden", { status: 403 });
-  }
-  const picksDate = url.searchParams.get("date") ?? isoFromOffset(0);
-  const resultsDate = url.searchParams.get("results") ?? isoFromOffset(-1);
-  const to = url.searchParams.get("to") ?? DIGEST_RECIPIENT;
-  const useSandbox = url.searchParams.get("sandbox") === "1";
-  try {
-    const r = await sendDailyDigest(env, { toEmail: to, picksDate, resultsDate, useSandbox });
-    return jsonResponse({ status: "done", id: r.id, attached: r.attached, notes: r.notes, picksDate, resultsDate, to });
-  } catch (err) {
-    console.error("[send-digest] failed", err);
     return jsonResponse({ status: "error", error: String(err) }, 500);
   }
 }

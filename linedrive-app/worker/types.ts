@@ -199,5 +199,4 @@ export interface Env {
   ASSETS: Fetcher;
   ADMIN_KEY: string;
   OG_API_KEY: string;
-  RESEND_API_KEY: string;
 }
